@@ -1,0 +1,8 @@
+__pycache__/
+olds/
+.cache/
+.vscode/
+.idea/
+.pytest_cache/
+playlist.json
+downloads/
