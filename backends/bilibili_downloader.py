@@ -76,7 +76,7 @@ class BilibiliDownloader:
             subprocess.run([
                 'ffmpeg', '-i', temp_path,
                 '-vn', '-acodec', 'libmp3lame',
-                '-q:a', '2', output_path
+                '-q:a', '2', output_path, "-y"
             ], check=True)
             
             # 清理临时文件

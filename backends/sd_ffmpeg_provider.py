@@ -30,7 +30,9 @@ class AudioPlayer(QObject):
         self._data_queue = queue.Queue(maxsize=10)  # 用于存储音频数据
         self._duration = 0
         self._position = 0
+        self._seek_time = -1 # 用于记录跳转时间
         self._is_finished = False  # 添加播放完成标志
+        self._volume = 1.0  # 音量, 0.0 到 1.0
 
     def _probe(self):
         try:
@@ -48,8 +50,16 @@ class AudioPlayer(QObject):
     def _play_thread(self):
         try:
             self._probe()
+            
+            # 根据是否有跳转需求，构建ffmpeg输入
+            input_stream = ffmpeg.input(self.filename)
+            if self._seek_time > 0:
+                input_stream = ffmpeg.input(self.filename, ss=self._seek_time)
+                self._position = self._seek_time # 更新当前播放位置
+                self._seek_time = -1 # 重置跳转标记
+
             process = (
-                ffmpeg.input(self.filename)
+                input_stream
                 .output('pipe:', format='f32le', acodec='pcm_f32le', ac=self._channels, ar=self._samplerate)
                 .run_async(pipe_stdout=True, pipe_stderr=False)
             )
@@ -65,7 +75,7 @@ class AudioPlayer(QObject):
                         self.playback_finished.emit()  # 发送播放结束信号
                         raise sd.CallbackStop()
                     audio_data = np.frombuffer(data, dtype=np.float32).reshape(-1, self._channels)
-                    outdata[:] = audio_data
+                    outdata[:] = audio_data * self._volume  # 应用音量
                     self._position = self._position + len(audio_data) / self._samplerate
                     # 将音频数据放入队列
                     if self._data_queue.full():
@@ -114,10 +124,29 @@ class AudioPlayer(QObject):
     def stop(self):
         self._stop_event.set()
         if self._stream:
-            self._stream.abort()
+            try:
+                self._stream.abort()
+            except Exception:
+                pass
         if self._thread:
+            self.resume() # 确保线程不是卡在pause上
             self._thread.join(timeout=1.0)
         self._is_finished = False  # 重置播放完成标志
+        self._position = 0 # 停止后位置归零
+
+    def seek(self, position_seconds):
+        """跳转到指定时间点"""
+        if self._thread and self._thread.is_alive():
+            self._seek_time = max(0, position_seconds)
+            
+            # 停止当前播放线程，以便用新的seek时间重启
+            self.stop()
+            # 重新开始播放
+            self.play()
+
+    def set_volume(self, volume):
+        """设置音量 (0.0 to 1.0)"""
+        self._volume = np.clip(volume, 0.0, 1.0)
 
     def get_audio_data(self):
         """获取最新的音频数据用于频谱显示"""

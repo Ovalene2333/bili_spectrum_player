@@ -66,7 +66,7 @@ class SpectrumProcessor:
             if raw_data is None:
                 # 没有新数据时，让旧的高度缓慢下降
                 if self._last_db_heights is not None:
-                    self._last_db_heights *= 0.98
+                    self._last_db_heights *= 0.9
                     try:
                         self._output_queue.put(self._last_db_heights, block=False)
                     except queue.Full:
