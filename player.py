@@ -939,7 +939,7 @@ class PlayerWindow(QMainWindow):
         if self.player:
             self.player.stop()
             self.is_playing = False
-            self.play_pause_btn.setIcon(QIcon("assets/icons/play.svg"))
+            self.play_pause_btn.setIcon(QIcon(get_resource_path("assets/icons/play.svg")))
             # 清空频谱
             self.spectrum.update_spectrum(np.zeros(self.config.NUM_BARS), self.start_time)
 
@@ -1108,7 +1108,7 @@ class PlayerWindow(QMainWindow):
             self.player.seek(new_position)
             self.player.resume()
             self.is_playing = True # 确保状态正确
-            self.play_pause_btn.setIcon(QIcon("assets/icons/pause.svg"))
+            self.play_pause_btn.setIcon(QIcon(get_resource_path("assets/icons/pause.svg"))) 
 
     def toggle_performance_mode(self, checked):
         """切换性能模式"""
