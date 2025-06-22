@@ -69,7 +69,7 @@ jobs:
     - name: Build executable (Windows)
       if: matrix.os == 'windows-latest'
       run: |
-        pyinstaller --onefile --windowed --name "BiliSpectrumPlayer" --icon=assets/icons/play.svg --add-data "assets;assets" --add-data "backends;backends" --hidden-import=PyQt6.QtCore --hidden-import=PyQt6.QtGui --hidden-import=PyQt6.QtWidgets --hidden-import=sounddevice --hidden-import=numpy --hidden-import=pyqtgraph --collect-submodules=sounddevice player.py
+        pyinstaller --onefile --windowed --name "BiliSpectrumPlayer" --add-data "assets;assets" --add-data "backends;backends" --hidden-import=PyQt6.QtCore --hidden-import=PyQt6.QtGui --hidden-import=PyQt6.QtWidgets --hidden-import=sounddevice --hidden-import=numpy --hidden-import=pyqtgraph --collect-submodules=sounddevice player.py
 
     - name: Build executable (macOS)
       if: matrix.os == 'macos-latest'
