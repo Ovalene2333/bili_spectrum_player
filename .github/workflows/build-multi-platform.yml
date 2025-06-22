@@ -1,0 +1,164 @@
+name: Build Multi-Platform Executables
+
+on:
+  push:
+    branches: [ main ]
+    tags: [ 'v*' ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        os: [windows-latest, macos-latest, ubuntu-latest]
+        include:
+          - os: windows-latest
+            executable_name: BiliSpectrumPlayer.exe
+            build_name: BiliSpectrumPlayer-windows
+            icon_path: assets/icons/play.svg
+          - os: macos-latest
+            executable_name: BiliSpectrumPlayer
+            build_name: BiliSpectrumPlayer-macos
+            icon_path: assets/icons/play.svg
+          - os: ubuntu-latest
+            executable_name: BiliSpectrumPlayer
+            build_name: BiliSpectrumPlayer-linux
+            icon_path: assets/icons/play.svg
+    
+    runs-on: ${{ matrix.os }}
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+        
+    - name: Install system dependencies (Ubuntu)
+      if: matrix.os == 'ubuntu-latest'
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y portaudio19-dev python3-pyqt6 python3-pyqt6.qtmultimedia alsa-utils
+        
+    - name: Install system dependencies (macOS)
+      if: matrix.os == 'macos-latest'
+      run: |
+        brew install portaudio
+        
+    - name: Install Python dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pyinstaller
+        
+    - name: Build executable (Windows)
+      if: matrix.os == 'windows-latest'
+      run: |
+        pyinstaller --onefile --windowed --name "BiliSpectrumPlayer" --icon=assets/icons/play.svg --add-data "assets;assets" --add-data "backends;backends" --hidden-import=PyQt6.QtCore --hidden-import=PyQt6.QtGui --hidden-import=PyQt6.QtWidgets --hidden-import=sounddevice --hidden-import=numpy --hidden-import=pyqtgraph --collect-submodules=sounddevice player.py
+        
+    - name: Build executable (macOS)
+      if: matrix.os == 'macos-latest'
+      run: |
+        pyinstaller --onefile --windowed --name "BiliSpectrumPlayer" --icon=assets/icons/play.svg --add-data "assets:assets" --add-data "backends:backends" --hidden-import=PyQt6.QtCore --hidden-import=PyQt6.QtGui --hidden-import=PyQt6.QtWidgets --hidden-import=sounddevice --hidden-import=numpy --hidden-import=pyqtgraph --collect-submodules=sounddevice player.py
+        
+    - name: Build executable (Linux)
+      if: matrix.os == 'ubuntu-latest'
+      run: |
+        pyinstaller --onefile --name "BiliSpectrumPlayer" --add-data "assets:assets" --add-data "backends:backends" --hidden-import=PyQt6.QtCore --hidden-import=PyQt6.QtGui --hidden-import=PyQt6.QtWidgets --hidden-import=sounddevice --hidden-import=numpy --hidden-import=pyqtgraph --collect-submodules=sounddevice player.py
+        
+    - name: Test executable
+      shell: bash
+      run: |
+        if [[ "${{ matrix.os }}" == "windows-latest" ]]; then
+          if [[ -f "dist/BiliSpectrumPlayer.exe" ]]; then
+            echo "Windows executable built successfully"
+          else
+            echo "Windows executable not found"
+            exit 1
+          fi
+        else
+          if [[ -f "dist/BiliSpectrumPlayer" ]]; then
+            echo "${{ matrix.os }} executable built successfully"
+            chmod +x dist/BiliSpectrumPlayer
+          else
+            echo "${{ matrix.os }} executable not found"
+            exit 1
+          fi
+        fi
+        
+    - name: Package executable (macOS)
+      if: matrix.os == 'macos-latest'
+      run: |
+        cd dist
+        tar -czf BiliSpectrumPlayer-macos.tar.gz BiliSpectrumPlayer
+        
+    - name: Package executable (Linux)
+      if: matrix.os == 'ubuntu-latest'
+      run: |
+        cd dist
+        tar -czf BiliSpectrumPlayer-linux.tar.gz BiliSpectrumPlayer
+        
+    - name: Upload Windows executable
+      if: matrix.os == 'windows-latest'
+      uses: actions/upload-artifact@v3
+      with:
+        name: ${{ matrix.build_name }}
+        path: dist/BiliSpectrumPlayer.exe
+        
+    - name: Upload macOS executable
+      if: matrix.os == 'macos-latest'
+      uses: actions/upload-artifact@v3
+      with:
+        name: ${{ matrix.build_name }}
+        path: dist/BiliSpectrumPlayer-macos.tar.gz
+        
+    - name: Upload Linux executable
+      if: matrix.os == 'ubuntu-latest'
+      uses: actions/upload-artifact@v3
+      with:
+        name: ${{ matrix.build_name }}
+        path: dist/BiliSpectrumPlayer-linux.tar.gz
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+    
+    steps:
+    - name: Download all artifacts
+      uses: actions/download-artifact@v3
+      
+    - name: Create Release
+      uses: softprops/action-gh-release@v1
+      with:
+        files: |
+          BiliSpectrumPlayer-windows/BiliSpectrumPlayer.exe
+          BiliSpectrumPlayer-macos/BiliSpectrumPlayer-macos.tar.gz
+          BiliSpectrumPlayer-linux/BiliSpectrumPlayer-linux.tar.gz
+        name: Release ${{ github.ref_name }}
+        draft: false
+        prerelease: false
+        body: |
+          ## Bili 音乐频谱播放器 ${{ github.ref_name }}
+          
+          ### 下载说明
+          - **Windows 用户**: 下载 `BiliSpectrumPlayer.exe` 直接运行
+          - **macOS 用户**: 下载 `BiliSpectrumPlayer-macos.tar.gz`，解压后运行
+          - **Linux 用户**: 下载 `BiliSpectrumPlayer-linux.tar.gz`，解压后运行
+          
+          ### 主要功能
+          - 🎵 支持多种音频格式播放
+          - 🌈 实时频谱可视化显示
+          - 📱 现代化 UI 界面
+          - 📻 哔哩哔哩音频下载支持
+          
+          ### 系统要求
+          - Windows 10 或更高版本
+          - macOS 10.14 或更高版本  
+          - Linux (Ubuntu 18.04+ 或等效版本)
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} 
