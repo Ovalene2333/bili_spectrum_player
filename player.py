@@ -18,6 +18,18 @@ from backends.spectrum_processor import SpectrumProcessor
 import time
 
 
+def get_resource_path(relative_path):
+    """获取资源文件的绝对路径，支持开发环境和打包环境"""
+    try:
+        # PyInstaller会创建临时文件夹，并将路径存储在_MEIPASS中
+        base_path = sys._MEIPASS
+    except AttributeError:
+        # 如果不是通过PyInstaller运行，使用脚本所在目录
+        base_path = os.path.dirname(os.path.abspath(__file__))
+    
+    return os.path.join(base_path, relative_path)
+
+
 class Config:
     SAMPLE_RATE = 44100
     CHUNK_SIZE = 1024
@@ -659,7 +671,11 @@ class PlayerWindow(QMainWindow):
         
         # 添加播放模式相关属性
         self.play_modes = ["sequence", "random", "single"]
-        self.play_mode_icons = ["assets/icons/repeat.svg", "assets/icons/shuffle.svg", "assets/icons/repeat-one.svg"]
+        self.play_mode_icons = [
+            get_resource_path("assets/icons/repeat.svg"),
+            get_resource_path("assets/icons/shuffle.svg"),
+            get_resource_path("assets/icons/repeat-one.svg")
+        ]
         self.current_play_mode_index = 0
         self.play_mode = self.play_modes[self.current_play_mode_index]
         self.playlist_history = []  # 用于随机播放时记录历史
@@ -753,16 +769,16 @@ class PlayerWindow(QMainWindow):
         spectrum_main_layout.addWidget(progress_overlay, 0, 0)
         
         # --- 按钮 ---
-        self.play_pause_btn = QPushButton(icon=QIcon("assets/icons/play.svg"))
+        self.play_pause_btn = QPushButton(icon=QIcon(get_resource_path("assets/icons/play.svg")))
         self.play_pause_btn.clicked.connect(self.toggle_play)
 
-        self.prev_btn = QPushButton(icon=QIcon("assets/icons/prev.svg"))
+        self.prev_btn = QPushButton(icon=QIcon(get_resource_path("assets/icons/prev.svg")))
         self.prev_btn.clicked.connect(self.play_previous)
 
-        self.next_btn = QPushButton(icon=QIcon("assets/icons/next.svg"))
+        self.next_btn = QPushButton(icon=QIcon(get_resource_path("assets/icons/next.svg")))
         self.next_btn.clicked.connect(self.play_next)
 
-        self.stop_btn = QPushButton(icon=QIcon("assets/icons/stop.svg"))
+        self.stop_btn = QPushButton(icon=QIcon(get_resource_path("assets/icons/stop.svg")))
         self.stop_btn.clicked.connect(self.stop)
 
         self.play_mode_btn = QPushButton(icon=QIcon(self.play_mode_icons[self.current_play_mode_index]))
@@ -872,7 +888,7 @@ class PlayerWindow(QMainWindow):
         self.current_file = file_path
         self.player.play()
         self.is_playing = True
-        self.play_pause_btn.setIcon(QIcon("assets/icons/pause.svg"))
+        self.play_pause_btn.setIcon(QIcon(get_resource_path("assets/icons/pause.svg")))
         self.stop_btn.setEnabled(True)
         # 清空频谱
         self.spectrum.update_spectrum(np.zeros(self.config.NUM_BARS), self.start_time)
@@ -911,13 +927,13 @@ class PlayerWindow(QMainWindow):
         if self.is_playing:
             self.player.pause()
             self.is_playing = False
-            self.play_pause_btn.setIcon(QIcon("assets/icons/play.svg"))
+            self.play_pause_btn.setIcon(QIcon(get_resource_path("assets/icons/play.svg")))
             # 清空频谱
             self.spectrum.update_spectrum(np.zeros(self.config.NUM_BARS), self.start_time)
         else:
             self.player.resume()
             self.is_playing = True
-            self.play_pause_btn.setIcon(QIcon("assets/icons/pause.svg"))
+            self.play_pause_btn.setIcon(QIcon(get_resource_path("assets/icons/pause.svg")))
 
     def stop(self):
         if self.player:

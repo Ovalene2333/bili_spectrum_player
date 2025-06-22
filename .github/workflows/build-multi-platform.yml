@@ -48,6 +48,17 @@ jobs:
       if: matrix.os == 'macos-latest'
       run: |
         brew install portaudio
+        # 创建macOS图标文件 (使用sips命令转换SVG到ICNS)
+        mkdir -p temp_icon.iconset
+        # 创建不同尺寸的PNG文件
+        sips -s format png assets/icons/play.svg --out temp_icon.iconset/icon_16x16.png -Z 16
+        sips -s format png assets/icons/play.svg --out temp_icon.iconset/icon_32x32.png -Z 32
+        sips -s format png assets/icons/play.svg --out temp_icon.iconset/icon_64x64.png -Z 64
+        sips -s format png assets/icons/play.svg --out temp_icon.iconset/icon_128x128.png -Z 128
+        sips -s format png assets/icons/play.svg --out temp_icon.iconset/icon_256x256.png -Z 256
+        sips -s format png assets/icons/play.svg --out temp_icon.iconset/icon_512x512.png -Z 512
+        # 创建ICNS文件
+        iconutil -c icns temp_icon.iconset -o assets/icons/play.icns
         
     - name: Install Python dependencies
       run: |
@@ -58,12 +69,12 @@ jobs:
     - name: Build executable (Windows)
       if: matrix.os == 'windows-latest'
       run: |
-        pyinstaller --onefile --windowed --name "BiliSpectrumPlayer" --add-data "assets;assets" --add-data "backends;backends" --hidden-import=PyQt6.QtCore --hidden-import=PyQt6.QtGui --hidden-import=PyQt6.QtWidgets --hidden-import=sounddevice --hidden-import=numpy --hidden-import=pyqtgraph --collect-submodules=sounddevice player.py
+        pyinstaller --onefile --windowed --name "BiliSpectrumPlayer" --icon=assets/icons/play.svg --add-data "assets;assets" --add-data "backends;backends" --hidden-import=PyQt6.QtCore --hidden-import=PyQt6.QtGui --hidden-import=PyQt6.QtWidgets --hidden-import=sounddevice --hidden-import=numpy --hidden-import=pyqtgraph --collect-submodules=sounddevice player.py
 
     - name: Build executable (macOS)
       if: matrix.os == 'macos-latest'
       run: |
-        pyinstaller --onefile --windowed --name "BiliSpectrumPlayer" --add-data "assets:assets" --add-data "backends:backends" --hidden-import=PyQt6.QtCore --hidden-import=PyQt6.QtGui --hidden-import=PyQt6.QtWidgets --hidden-import=sounddevice --hidden-import=numpy --hidden-import=pyqtgraph --collect-submodules=sounddevice player.py
+        pyinstaller --onefile --windowed --name "BiliSpectrumPlayer" --icon=assets/icons/play.icns --add-data "assets:assets" --add-data "backends:backends" --hidden-import=PyQt6.QtCore --hidden-import=PyQt6.QtGui --hidden-import=PyQt6.QtWidgets --hidden-import=sounddevice --hidden-import=numpy --hidden-import=pyqtgraph --collect-submodules=sounddevice player.py
         
     - name: Build executable (Linux)
       if: matrix.os == 'ubuntu-latest'
