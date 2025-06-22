@@ -104,21 +104,21 @@ jobs:
         
     - name: Upload Windows executable
       if: matrix.os == 'windows-latest'
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: ${{ matrix.build_name }}
         path: dist/BiliSpectrumPlayer.exe
         
     - name: Upload macOS executable
       if: matrix.os == 'macos-latest'
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: ${{ matrix.build_name }}
         path: dist/BiliSpectrumPlayer-macos.tar.gz
         
     - name: Upload Linux executable
       if: matrix.os == 'ubuntu-latest'
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: ${{ matrix.build_name }}
         path: dist/BiliSpectrumPlayer-linux.tar.gz
@@ -130,7 +130,7 @@ jobs:
     
     steps:
     - name: Download all artifacts
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
       
     - name: Create Release
       uses: softprops/action-gh-release@v1
