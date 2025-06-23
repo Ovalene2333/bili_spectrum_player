@@ -8,10 +8,11 @@ from PyQt6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, 
     QPushButton, QFileDialog, QLabel, QListWidget, QListWidgetItem,
     QScrollArea, QFrame, QSizePolicy, QStackedLayout, QGridLayout,
-    QLineEdit, QMessageBox, QGraphicsDropShadowEffect, QSlider
+    QLineEdit, QMessageBox, QGraphicsDropShadowEffect, QSlider,
+    QDialog, QFormLayout, QTextBrowser
 )
-from PyQt6.QtCore import QTimer, Qt, QPropertyAnimation, QEasingCurve, QSize, pyqtSignal, QPoint
-from PyQt6.QtGui import QPalette, QBrush, QLinearGradient, QColor, QPainter, QIcon, QPen, QFont, QPixmap, QCursor
+from PyQt6.QtCore import QTimer, Qt, QPropertyAnimation, QEasingCurve, QSize, pyqtSignal, QPoint, QUrl
+from PyQt6.QtGui import QPalette, QBrush, QLinearGradient, QColor, QPainter, QIcon, QPen, QFont, QPixmap, QCursor, QDesktopServices
 from PyQt6.QtSvg import QSvgRenderer
 from backends.sd_ffmpeg_provider import AudioPlayer
 from backends.bilibili_downloader import BilibiliDownloader
@@ -66,6 +67,10 @@ class Config:
     ]
     PLAYLIST_FILE = os.path.join(CONFIG_PATH, "playlist.json")
     SETTINGS_FILE = os.path.join(CONFIG_PATH, "settings.json")
+    
+    # --- 项目信息 ---
+    GITHUB_URL = "https://github.com/Ovalene2333/bili_spectrum_player"  # 请替换
+    DEFAULT_DOWNLOAD_PATH = os.path.join(application_path, 'downloads')
 
     # --- 频谱渐变色 ---
     SPECTRUM_INNER_COLOR = QColor("#43e97b")
@@ -374,12 +379,20 @@ class CollapsiblePlaylist(QWidget):
         self.performance_mode_btn.setCheckable(True)
         self.performance_mode_btn.setObjectName("PerformanceModeButton")
         self.performance_mode_btn.toggled.connect(self.performance_mode_toggled.emit)
+        
+        # 设置按钮
+        self.settings_btn = QPushButton()
+        self.settings_btn.setIcon(create_icon(os.path.join(ASSETS_PATH, "icons/settings.svg")))
+        self.settings_btn.setObjectName("SettingsButton")
+        self.settings_btn.setToolTip("设置")
+        self.settings_btn.setFixedSize(32, 32)
 
         # 添加按钮到布局
         button_row.addWidget(self.download_btn)
         button_row.addWidget(self.select_file_btn)
         button_row.addWidget(self.delete_btn)
         button_row.addWidget(self.performance_mode_btn)
+        button_row.addWidget(self.settings_btn)
         
         # 统一设置按钮字体为粗体
         bold_font = QFont()
@@ -589,6 +602,168 @@ def create_icon(path, color="white"):
     painter.end()
     return QIcon(pixmap)
 
+class SettingsDialog(QDialog):
+    """设置对话框"""
+    
+    def __init__(self, parent=None, settings=None):
+        super().__init__(parent)
+        self.settings = settings or {}
+        self.setup_ui()
+        self.load_current_settings()
+    
+    def setup_ui(self):
+        self.setWindowTitle("设置")
+        self.setFixedSize(500, 400)
+        self.setModal(True)
+        
+        layout = QVBoxLayout(self)
+        layout.setSpacing(20)
+        
+        # 创建表单布局
+        form_layout = QFormLayout()
+        form_layout.setSpacing(15)
+        
+        # 默认下载路径设置
+        download_path_layout = QHBoxLayout()
+        self.download_path_edit = QLineEdit()
+        self.download_path_edit.setReadOnly(True)
+        self.download_path_edit.setPlaceholderText("选择下载文件夹...")
+        self.download_path_edit.setStyleSheet("color: #000000;")
+        
+        self.browse_btn = QPushButton("浏览")
+        self.browse_btn.clicked.connect(self.browse_download_path)
+        self.browse_btn.setFixedWidth(80)
+        
+        download_path_layout.addWidget(self.download_path_edit)
+        download_path_layout.addWidget(self.browse_btn)
+        
+        form_layout.addRow("默认下载路径:", download_path_layout)
+        
+        layout.addLayout(form_layout)
+        
+        # 项目信息区域
+        info_group = QWidget()
+        info_layout = QVBoxLayout(info_group)
+        
+        info_title = QLabel("项目信息")
+        info_title.setFont(QFont("微软雅黑", 12, QFont.Weight.Bold))
+        info_title.setStyleSheet("color: #333; margin-bottom: 10px;")
+        info_layout.addWidget(info_title)
+        
+        # GitHub链接
+        github_layout = QHBoxLayout()
+        github_label = QLabel("GitHub地址:")
+        github_label.setStyleSheet("color: #666;")
+        
+        self.github_link = QLabel(f'<a href="{Config.GITHUB_URL}" style="color: #2196F3; text-decoration: none;">{Config.GITHUB_URL}</a>')
+        self.github_link.setOpenExternalLinks(True)
+        self.github_link.setStyleSheet("color: #2196F3;")
+        self.github_link.setWordWrap(True)
+        
+        github_layout.addWidget(github_label)
+        github_layout.addWidget(self.github_link)
+        github_layout.addStretch()
+        
+        info_layout.addLayout(github_layout)
+        
+        # 项目描述
+        description = QTextBrowser()
+        description.setMaximumHeight(120)
+        description.setHtml("""
+        <p><b>Bili音乐播放助手</b></p>
+        <p>一个功能丰富的音乐播放器，支持：</p>
+        <ul>
+        <li>🎵 多种音频格式播放</li>
+        <li>🎨 炫酷的圆形频谱可视化</li>
+        <li>📺 B站视频音频下载</li>
+        <li>🎲 多种播放模式（顺序/随机/单曲循环）</li>
+        <li>⚡ 性能模式切换</li>
+        </ul>
+        """)
+        
+        info_layout.addWidget(description)
+        layout.addWidget(info_group)
+        
+        # 按钮布局
+        button_layout = QHBoxLayout()
+        button_layout.addStretch()
+        
+        self.ok_btn = QPushButton("确定")
+        self.ok_btn.clicked.connect(self.accept_settings)
+        self.ok_btn.setFixedSize(80, 30)
+        
+        self.cancel_btn = QPushButton("取消")
+        self.cancel_btn.clicked.connect(self.reject)
+        self.cancel_btn.setFixedSize(80, 30)
+        
+        button_layout.addWidget(self.ok_btn)
+        button_layout.addWidget(self.cancel_btn)
+        
+        layout.addLayout(button_layout)
+        
+        # 设置样式
+        self.setStyleSheet("""
+            QDialog {
+                background-color: #f0f0f0;
+            }
+            QLabel {
+                color: #333;
+                font-size: 12px;
+            }
+            QLineEdit {
+                padding: 8px;
+                border: 1px solid #ccc;
+                border-radius: 4px;
+                font-size: 12px;
+                background: white;
+            }
+            QPushButton {
+                background-color: #2196F3;
+                color: white;
+                border: none;
+                padding: 6px 12px;
+                border-radius: 4px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background-color: #1976D2;
+            }
+            QPushButton:pressed {
+                background-color: #1565C0;
+            }
+            QTextBrowser {
+                background: #fafafa;
+                border: 1px solid #ccc;
+                border-radius: 5px;
+                padding: 10px;
+                color: #333;
+            }
+        """)
+    
+    def browse_download_path(self):
+        """浏览选择下载路径"""
+        folder = QFileDialog.getExistingDirectory(
+            self, 
+            "选择默认下载文件夹",
+            self.download_path_edit.text() or Config.DEFAULT_DOWNLOAD_PATH
+        )
+        if folder:
+            self.download_path_edit.setText(folder)
+    
+    def load_current_settings(self):
+        """加载当前设置"""
+        download_path = self.settings.get("download_path", Config.DEFAULT_DOWNLOAD_PATH)
+        self.download_path_edit.setText(download_path)
+    
+    def accept_settings(self):
+        """接受设置更改"""
+        self.settings["download_path"] = self.download_path_edit.text() or Config.DEFAULT_DOWNLOAD_PATH
+        self.accept()
+    
+    def get_settings(self):
+        """获取设置"""
+        return self.settings
+
 class PlayerWindow(QMainWindow):
     def __init__(self):
         super().__init__()
@@ -613,7 +788,6 @@ class PlayerWindow(QMainWindow):
 
         self.setup_ui()
         self.setup_audio()
-        self.bilibili_downloader = BilibiliDownloader()
         
         # 创建音频数据队列和频谱处理器
         self.audio_queue = queue.Queue(maxsize=10)
@@ -624,6 +798,11 @@ class PlayerWindow(QMainWindow):
 
         # 加载设置
         self.load_settings()
+        
+        # 初始化BilibiliDownloader（在加载设置之后）
+        download_path = self.settings.get("download_path", Config.DEFAULT_DOWNLOAD_PATH)
+        self.bilibili_downloader = BilibiliDownloader(download_path)
+        
         # 根据设置恢复播放列表选中项
         self.restore_last_played_track()
 
@@ -657,6 +836,8 @@ class PlayerWindow(QMainWindow):
         self.playlist = CollapsiblePlaylist(self)
         self.playlist.play_signal.connect(self.play_file)
         self.playlist.performance_mode_toggled.connect(self.toggle_performance_mode)
+        # 连接设置按钮信号
+        self.playlist.settings_btn.clicked.connect(self.open_settings)
         control_layout.addWidget(self.playlist)
         
         content_layout.addWidget(control_panel)
@@ -890,12 +1071,11 @@ class PlayerWindow(QMainWindow):
             self.is_playing = False
         self.update_play_pause_icon()
         self.time_label.setText("00:00 / 00:00")
-        # 清空频谱
-        self.spectrum.update_spectrum(np.zeros(self.config.NUM_BARS), self.start_time)
+        # 不再直接清空频谱，让spectrum_processor自然处理渐变下降
 
     def update_spectrum(self):
-        if self.player and self.is_playing:
-            # --- 进度条与时间更新 ---
+        if self.player:
+            # --- 进度条与时间更新 (播放和暂停状态都更新) ---
             try:
                 pos = self.player.get_position()
                 dur = self.player.get_duration()
@@ -909,8 +1089,8 @@ class PlayerWindow(QMainWindow):
                 self.progress_bar.set_progress(0)
                 self.time_label.setText("00:00 / 00:00")
 
-            # --- 频谱更新 (如果性能模式关闭) ---
-            if not self.performance_mode_enabled:
+            # --- 频谱更新 (仅在播放时) ---
+            if self.is_playing and not self.performance_mode_enabled:
                 audio_data = self.player.get_audio_data()
                 if audio_data is not None:
                     data = audio_data[:, 0] if audio_data.ndim > 1 else audio_data
@@ -924,12 +1104,23 @@ class PlayerWindow(QMainWindow):
                     self.spectrum.update_spectrum(display_heights, self.start_time)
                 except queue.Empty:
                     pass
+            elif not self.performance_mode_enabled:
+                # 暂停时让频谱自然下降，但不更新进度条
+                try:
+                    display_heights = self.spectrum_processor.get_processed_data_queue().get_nowait()
+                    self.spectrum.update_spectrum(display_heights, self.start_time)
+                except queue.Empty:
+                    pass
         else:
-            # --- 没有播放器时，将所有内容归零 ---
+            # --- 没有播放器时，保持进度条和时间归零，但让频谱自然下降 ---
             self.progress_bar.set_progress(0)
             if not self.performance_mode_enabled:
-                heights = np.zeros(self.config.NUM_BARS)
-                self.spectrum.update_spectrum(heights, self.start_time)
+                # 仍然尝试从处理器获取渐变下降的频谱数据
+                try:
+                    display_heights = self.spectrum_processor.get_processed_data_queue().get_nowait()
+                    self.spectrum.update_spectrum(display_heights, self.start_time)
+                except queue.Empty:
+                    pass
             self.time_label.setText("00:00 / 00:00")
 
     def closeEvent(self, event):
@@ -1107,15 +1298,36 @@ class PlayerWindow(QMainWindow):
                     self.settings = json.load(f)
             else:
                 # 如果文件不存在，使用默认值
-                self.settings = {"volume": 50, "play_mode": "sequence", "last_played_file": ""}
+                self.settings = {
+                    "volume": 100, 
+                    "play_mode": "sequence", 
+                    "last_played_file": "",
+                    "download_path": Config.DEFAULT_DOWNLOAD_PATH
+                }
         except (json.JSONDecodeError, FileNotFoundError):
             # 如果文件损坏或无法读取，使用默认值
-            self.settings = {"volume": 50, "play_mode": "sequence", "last_played_file": ""}
+            self.settings = {
+                "volume": 100, 
+                "play_mode": "sequence", 
+                "last_played_file": "",
+                "download_path": Config.DEFAULT_DOWNLOAD_PATH
+            }
 
         # 恢复音量（线性）
         self.volume_slider.setValue(self.settings.get("volume", 100))
         # 恢复播放模式
         self.set_play_mode(self.settings.get("play_mode", "sequence"))
+        
+        # 确保下载目录存在
+        download_path = self.settings.get("download_path", Config.DEFAULT_DOWNLOAD_PATH)
+        if not os.path.exists(download_path):
+            try:
+                os.makedirs(download_path)
+            except OSError:
+                # 如果创建失败，回退到默认路径
+                self.settings["download_path"] = Config.DEFAULT_DOWNLOAD_PATH
+                if not os.path.exists(Config.DEFAULT_DOWNLOAD_PATH):
+                    os.makedirs(Config.DEFAULT_DOWNLOAD_PATH)
 
     def save_settings(self):
         """保存播放器设置"""
@@ -1152,6 +1364,27 @@ class PlayerWindow(QMainWindow):
             self.play_pause_btn.setIcon(create_icon(os.path.join(ASSETS_PATH, "icons/pause.svg")))
         else:
             self.play_pause_btn.setIcon(create_icon(os.path.join(ASSETS_PATH, "icons/play.svg")))
+    
+    def open_settings(self):
+        """打开设置对话框"""
+        dialog = SettingsDialog(self, self.settings.copy())
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            # 更新设置
+            new_settings = dialog.get_settings()
+            self.settings.update(new_settings)
+            self.save_settings()
+            
+            # 确保下载目录存在
+            download_path = self.settings.get("download_path", Config.DEFAULT_DOWNLOAD_PATH)
+            if not os.path.exists(download_path):
+                try:
+                    os.makedirs(download_path)
+                except OSError as e:
+                    QMessageBox.warning(self, "警告", f"无法创建下载目录: {e}")
+            
+            # 更新下载器的下载路径
+            if hasattr(self, 'bilibili_downloader'):
+                self.bilibili_downloader.set_download_path(download_path)
 
 def main():
     # 开启全局抗锯齿，使频谱更平滑

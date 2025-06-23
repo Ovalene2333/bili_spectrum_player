@@ -36,7 +36,38 @@ class AudioPlayer(QObject):
 
     def _probe(self):
         try:
-            probe = ffmpeg.probe(self.filename)
+            # 针对Windows平台，隐藏ffmpeg.probe的终端窗口
+            if sys.platform == "win32":
+                # 临时设置环境变量来隐藏probe的子进程窗口
+                original_startupinfo = getattr(subprocess, '_original_startupinfo', None)
+                if not original_startupinfo:
+                    subprocess._original_startupinfo = subprocess.STARTUPINFO
+                    
+                class HiddenStartupInfo(subprocess.STARTUPINFO):
+                    def __init__(self):
+                        super().__init__()
+                        self.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+                        self.wShowWindow = subprocess.SW_HIDE
+                
+                # 临时替换STARTUPINFO
+                original_popen = subprocess.Popen
+                def hidden_popen(*args, **kwargs):
+                    if 'startupinfo' not in kwargs:
+                        kwargs['startupinfo'] = HiddenStartupInfo()
+                    if 'creationflags' not in kwargs:
+                        kwargs['creationflags'] = subprocess.CREATE_NO_WINDOW
+                    return original_popen(*args, **kwargs)
+                
+                subprocess.Popen = hidden_popen
+                
+                try:
+                    probe = ffmpeg.probe(self.filename)
+                finally:
+                    # 恢复原始的Popen
+                    subprocess.Popen = original_popen
+            else:
+                probe = ffmpeg.probe(self.filename)
+                
             for stream in probe['streams']:
                 if stream['codec_type'] == 'audio':
                     self._samplerate = int(stream['sample_rate'])

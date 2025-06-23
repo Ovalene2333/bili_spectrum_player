@@ -1,1 +1,2 @@
 pyinstaller --windowed --name BiliSpectrumPlayer --add-data "assets;assets" --add-data "config;config" player.py -y
+@REM pyinstaller --onefile --windowed --name BiliSpectrumPlayer --add-data "assets;assets" --add-data "config;config" player.py -y

@@ -6,12 +6,26 @@ from urllib.parse import urlparse, parse_qs
 import subprocess
 import tempfile
 import time
+import sys
 
 class BilibiliDownloader:
-    def __init__(self):
+    def __init__(self, download_path=None):
         self.headers = {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
         }
+        # 设置默认下载路径
+        if download_path is None:
+            self.download_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "downloads")
+        else:
+            self.download_path = download_path
+        
+        # 确保下载目录存在
+        os.makedirs(self.download_path, exist_ok=True)
+    
+    def set_download_path(self, path):
+        """设置下载路径"""
+        self.download_path = path
+        os.makedirs(self.download_path, exist_ok=True)
         
     def get_bvid_from_url(self, url):
         """从URL中提取BVID"""
@@ -73,11 +87,20 @@ class BilibiliDownloader:
                         f.write(chunk)
                         
             # 使用ffmpeg转换为MP3
+            # 针对Windows平台，隐藏FFmpeg终端窗口
+            startupinfo = None
+            creation_flags = 0
+            if sys.platform == "win32":
+                startupinfo = subprocess.STARTUPINFO()
+                startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+                startupinfo.wShowWindow = subprocess.SW_HIDE
+                creation_flags = subprocess.CREATE_NO_WINDOW
+
             subprocess.run([
                 'ffmpeg', '-i', temp_path,
                 '-vn', '-acodec', 'libmp3lame',
                 '-q:a', '2', output_path, "-y"
-            ], check=True)
+            ], check=True, startupinfo=startupinfo, creationflags=creation_flags)
             
             # 清理临时文件
             os.unlink(temp_path)
@@ -96,8 +119,7 @@ class BilibiliDownloader:
         # 清理标题中的非法文件名字符
         safe_title = re.sub(r'[\\/:*?"<>|]', '_', title)
         if output_path is None:
-            download_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "downloads")
-            os.makedirs(download_dir, exist_ok=True)
-            output_path = os.path.join(download_dir, f"{safe_title}.mp3")
+            # 使用实例的下载路径
+            output_path = os.path.join(self.download_path, f"{safe_title}.mp3")
         audio_url = self.get_audio_url(bvid)
         return self.download_audio(audio_url, output_path) 
