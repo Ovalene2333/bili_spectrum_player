@@ -58,11 +58,30 @@ class AudioPlayer(QObject):
                 self._position = self._seek_time # 更新当前播放位置
                 self._seek_time = -1 # 重置跳转标记
 
-            process = (
-                input_stream
-                .output('pipe:', format='f32le', acodec='pcm_f32le', ac=self._channels, ar=self._samplerate)
-                .run_async(pipe_stdout=True, pipe_stderr=False)
+            # 构建 ffmpeg 命令
+            args = (
+                ffmpeg
+                .output(input_stream, 'pipe:', format='f32le', acodec='pcm_f32le', ac=self._channels, ar=self._samplerate)
+                .compile()
             )
+
+            # 针对Windows平台，使用STARTUPINFO和creationflags彻底隐藏FFmpeg终端窗口
+            startupinfo = None
+            creation_flags = 0
+            if sys.platform == "win32":
+                startupinfo = subprocess.STARTUPINFO()
+                startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+                creation_flags = subprocess.CREATE_NO_WINDOW
+
+            # 使用 subprocess.Popen 手动执行命令
+            process = subprocess.Popen(
+                args, 
+                stdout=subprocess.PIPE, 
+                stderr=subprocess.DEVNULL,
+                startupinfo=startupinfo,
+                creationflags=creation_flags
+            )
+
             def callback(outdata, frames, time, status):
                 if not self._pause_event.is_set():
                     outdata[:] = np.zeros(outdata.shape, dtype=np.float32)

@@ -1,0 +1,182 @@
+/* =========================================================================
+   Global and Main Window Styles
+   ========================================================================= */
+
+QWidget {
+    font-family: '微软雅黑', 'Segoe UI', 'Arial', 'sans-serif';
+}
+
+/* =========================================================================
+   Collapsible Playlist and its child widgets
+   ========================================================================= */
+
+#ControlPanel {
+    background: rgba(255,255,255,0.18);
+    border-radius: 18px;
+    border: 1px solid rgba(255,255,255,0.3);
+}
+
+#BilibiliInput, #SearchBox {
+    background: rgba(255,255,255,0.15);
+    border: 1px solid rgba(255,255,255,0.3);
+    border-radius: 12px;
+    padding: 6px 12px;
+    color: white;
+    font-size: 12px;
+}
+
+#BilibiliInput:focus, #SearchBox:focus {
+    background: rgba(255,255,255,0.2);
+    border: 1px solid rgba(255,255,255,0.4);
+}
+
+#DownloadButton, #SelectFileButton, #DeleteButton, #PerformanceModeButton {
+    background: rgba(255,255,255,0.15);
+    border: 1px solid rgba(255,255,255,0.3);
+    border-radius: 12px;
+    padding: 6px;
+    color: white;
+    font-size: 12px;
+}
+
+#DownloadButton:hover, #SelectFileButton:hover, #DeleteButton:hover, #PerformanceModeButton:hover {
+    background: rgba(255,255,255,0.2);
+}
+
+#PerformanceModeButton:checked {
+    background: rgba(33,150,243,0.25);
+    border: 1px solid rgba(33,150,243,0.4);
+}
+
+QListWidget {
+    background: transparent;
+    border: none;
+    color: white;
+    font-size: 13px;
+    padding-right: 5px; /* 为滚动条留出空间 */
+}
+
+QListWidget::item {
+    padding: 8px 12px;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+}
+
+QListWidget::item:selected {
+    background: rgba(33,150,243,0.25);
+    border-radius: 8px;
+    color: #BBBBBB;
+}
+
+/* --- Scrollbar Styles --- */
+QScrollBar:vertical {
+    border: none;
+    background: rgba(0,0,0,0.1);
+    width: 8px;
+    margin: 0px 0 0px 0;
+    border-radius: 4px;
+}
+QScrollBar::handle:vertical {
+    background: rgba(255,255,255,0.25);
+    min-height: 20px;
+    border-radius: 4px;
+}
+QScrollBar::handle:vertical:hover {
+    background: rgba(255,255,255,0.35);
+}
+QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
+    border: none;
+    background: none;
+    height: 0px;
+}
+QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical {
+    background: none;
+}
+QScrollBar:horizontal {
+    border: none;
+    background: rgba(0,0,0,0.1);
+    height: 8px;
+    margin: 0px 0 0px 0;
+    border-radius: 4px;
+}
+QScrollBar::handle:horizontal {
+    background: rgba(255,255,255,0.25);
+    min-width: 20px;
+    border-radius: 4px;
+}
+QScrollBar::handle:horizontal:hover {
+    background: rgba(255,255,255,0.35);
+}
+QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal {
+    border: none;
+    background: none;
+    width: 0px;
+}
+QScrollBar::add-page:horizontal, QScrollBar::sub-page:horizontal {
+    background: none;
+}
+
+/* =========================================================================
+   Volume Slider
+   ========================================================================= */
+
+QSlider {
+    background: transparent;
+}
+QSlider::groove:horizontal {
+    background: rgba(255, 255, 255, 0.3);
+    height: 4px;
+    border-radius: 2px;
+}
+QSlider::handle:horizontal {
+    background: white;
+    width: 14px;
+    height: 14px;
+    margin: -5px 0; 
+    border-radius: 7px;
+}
+QSlider::sub-page:horizontal {
+    background: rgba(33, 150, 243, 0.7);
+    height: 4px;
+    border-radius: 2px;
+}
+
+/* =========================================================================
+   Control Buttons (Play, Pause, etc.)
+   ========================================================================= */
+
+#PlayPauseButton, #PrevButton, #NextButton, #StopButton, #PlayModeButton {
+    background: rgba(255,255,255,0.25);
+    border: none;
+    border-radius: 20px; /* 按钮尺寸为40px，半径为20px实现完美圆形 */
+}
+
+#PlayPauseButton:hover, #PrevButton:hover, #NextButton:hover, #StopButton:hover, #PlayModeButton:hover {
+    background: rgba(33,150,243,0.12);
+}
+
+#PlayPauseButton:pressed, #PrevButton:pressed, #NextButton:pressed, #StopButton:pressed, #PlayModeButton:pressed {
+    background: rgba(33,150,243,0.18);
+}
+
+/* =========================================================================
+   Time Label
+   ========================================================================= */
+
+#TimeLabel {
+    color: rgba(255, 255, 255, 0.9);
+    font-size: 16px;
+    font-family: "Segoe UI", "Consolas", "Monaco", "monospace";
+    font-weight: bold;
+    background-color: rgba(0, 0, 0, 0.2);
+    border-radius: 8px;
+    padding: 4px 10px;
+    min-width: 100px;
+}
+
+/* =========================================================================
+   Progress Overlay & Buttons Overlay
+   ========================================================================= */
+
+#ProgressOverlay, #ButtonsOverlay {
+    background: transparent;
+}

@@ -13,7 +13,7 @@ Bili音乐播放助手是一款基于Python和PyQt6开发的桌面音乐播放�
 - 播放控制：播放、暂停、停止、上一首、下一首
 - 界面采用渐变背景和现代化按钮样式，用户体验良好
 
-![image-20250616151609859](./assets/readme/normal.png)
+![image-20250616151609859](./readme_src/normal.png)
 
 <!-- ![image-20250616151654772](./README.assets/image-20250616151654772.png) -->
 
@@ -68,4 +68,4 @@ Bili音乐播放助手是一款基于Python和PyQt6开发的桌面音乐播放�
 
 优化了美术风格，调整了配色，让UI更集中了
 添加了性能模式和音量调整（鼠标悬停到播放列表下侧）的功能
-![性能模式](./assets/readme/efficiency.png)
+![性能模式](./readme_src/efficiency.png)

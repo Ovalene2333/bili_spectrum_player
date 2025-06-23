@@ -11,11 +11,29 @@ from PyQt6.QtWidgets import (
     QLineEdit, QMessageBox, QGraphicsDropShadowEffect, QSlider
 )
 from PyQt6.QtCore import QTimer, Qt, QPropertyAnimation, QEasingCurve, QSize, pyqtSignal, QPoint
-from PyQt6.QtGui import QPalette, QBrush, QLinearGradient, QColor, QPainter, QIcon, QPen, QFont
+from PyQt6.QtGui import QPalette, QBrush, QLinearGradient, QColor, QPainter, QIcon, QPen, QFont, QPixmap, QCursor
+from PyQt6.QtSvg import QSvgRenderer
 from backends.sd_ffmpeg_provider import AudioPlayer
 from backends.bilibili_downloader import BilibiliDownloader
 from backends.spectrum_processor import SpectrumProcessor
 import time
+
+
+# --- 路径定义 ---
+# 无论从何处运行，都能找到正确的资源路径
+if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
+    # 如果应用被 PyInstaller 打包
+    application_path = sys._MEIPASS
+else:
+    application_path = os.path.dirname(os.path.abspath(__file__))
+
+ASSETS_PATH = os.path.join(application_path, 'assets')
+CONFIG_PATH = os.path.join(application_path, 'config')
+
+# 确保config目录存在
+if not os.path.exists(CONFIG_PATH):
+    os.makedirs(CONFIG_PATH)
+# --- 路径定义 ---
 
 
 class Config:
@@ -46,7 +64,8 @@ class Config:
         (255, 0, 150, 255),
         (255, 180, 255, 255),
     ]
-    PLAYLIST_FILE = "playlist.json"
+    PLAYLIST_FILE = os.path.join(CONFIG_PATH, "playlist.json")
+    SETTINGS_FILE = os.path.join(CONFIG_PATH, "settings.json")
 
     # --- 频谱渐变色 ---
     SPECTRUM_INNER_COLOR = QColor("#43e97b")
@@ -326,26 +345,10 @@ class CollapsiblePlaylist(QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(6)
         
-        
-        
-
         # 创建B站下载输入框
         self.bilibili_input = QLineEdit()
         self.bilibili_input.setPlaceholderText("输入B站视频链接")
-        self.bilibili_input.setStyleSheet('''
-            QLineEdit {
-                background: rgba(255,255,255,0.15);
-                border: 1px solid rgba(255,255,255,0.3);
-                border-radius: 12px;
-                padding: 6px 12px;
-                color: white;
-                font-size: 12px;
-            }
-            QLineEdit:focus {
-                background: rgba(255,255,255,0.2);
-                border: 1px solid rgba(255,255,255,0.4);
-            }
-        ''')
+        self.bilibili_input.setObjectName("BilibiliInput")
         layout.addWidget(self.bilibili_input)
         
         # 创建按钮行
@@ -354,74 +357,22 @@ class CollapsiblePlaylist(QWidget):
         
         # 下载按钮
         self.download_btn = QPushButton("下载")
-        self.download_btn.setStyleSheet('''
-            QPushButton {
-                background: rgba(255,255,255,0.15);
-                border: 1px solid rgba(255,255,255,0.3);
-                border-radius: 12px;
-                padding: 6px;
-                color: white;
-                font-size: 12px;
-            }
-            QPushButton:hover {
-                background: rgba(255,255,255,0.2);
-            }
-        ''')
+        self.download_btn.setObjectName("DownloadButton")
         
         # 添加文件按钮
         self.select_file_btn = QPushButton("添加文件")
-        self.select_file_btn.setStyleSheet('''
-            QPushButton {
-                background: rgba(255,255,255,0.15);
-                border: 1px solid rgba(255,255,255,0.3);
-                border-radius: 12px;
-                padding: 6px;
-                color: white;
-                font-size: 12px;
-            }
-            QPushButton:hover {
-                background: rgba(255,255,255,0.2);
-            }
-        ''')
+        self.select_file_btn.setObjectName("SelectFileButton")
         self.select_file_btn.clicked.connect(self.select_files)
         
         # 删除按钮
         self.delete_btn = QPushButton("删除")
-        self.delete_btn.setStyleSheet('''
-            QPushButton {
-                background: rgba(255,255,255,0.15);
-                border: 1px solid rgba(255,255,255,0.3);
-                border-radius: 12px;
-                padding: 6px;
-                color: white;
-                font-size: 12px;
-            }
-            QPushButton:hover {
-                background: rgba(255,255,255,0.2);
-            }
-        ''')
+        self.delete_btn.setObjectName("DeleteButton")
         self.delete_btn.clicked.connect(self.delete_selected)
         
         # 性能模式按钮
         self.performance_mode_btn = QPushButton("性能模式")
         self.performance_mode_btn.setCheckable(True)
-        self.performance_mode_btn.setStyleSheet('''
-            QPushButton {
-                background: rgba(255,255,255,0.15);
-                border: 1px solid rgba(255,255,255,0.3);
-                border-radius: 12px;
-                padding: 6px;
-                color: white;
-                font-size: 12px;
-            }
-            QPushButton:hover {
-                background: rgba(255,255,255,0.2);
-            }
-            QPushButton:checked {
-                background: rgba(33,150,243,0.25);
-                border: 1px solid rgba(33,150,243,0.4);
-            }
-        ''')
+        self.performance_mode_btn.setObjectName("PerformanceModeButton")
         self.performance_mode_btn.toggled.connect(self.performance_mode_toggled.emit)
 
         # 添加按钮到布局
@@ -429,25 +380,21 @@ class CollapsiblePlaylist(QWidget):
         button_row.addWidget(self.select_file_btn)
         button_row.addWidget(self.delete_btn)
         button_row.addWidget(self.performance_mode_btn)
+        
+        # 统一设置按钮字体为粗体
+        bold_font = QFont()
+        bold_font.setBold(True)
+        for i in range(button_row.count()):
+            widget = button_row.itemAt(i).widget()
+            if isinstance(widget, QPushButton):
+                widget.setFont(bold_font)
+                
         layout.addLayout(button_row)
         
         # 创建搜索框
         self.search_box = QLineEdit()
         self.search_box.setPlaceholderText("搜索播放列表...")
-        self.search_box.setStyleSheet('''
-            QLineEdit {
-                background: rgba(255,255,255,0.15);
-                border: 1px solid rgba(255,255,255,0.3);
-                border-radius: 12px;
-                padding: 6px 12px;
-                color: white;
-                font-size: 12px;
-            }
-            QLineEdit:focus {
-                background: rgba(255,255,255,0.2);
-                border: 1px solid rgba(255,255,255,0.4);
-            }
-        ''')
+        self.search_box.setObjectName("SearchBox")
         self.search_box.textChanged.connect(self.filter_playlist)
         layout.addWidget(self.search_box)
 
@@ -460,6 +407,7 @@ class CollapsiblePlaylist(QWidget):
                 border: none;
                 color: white;
                 font-size: 13px;
+                font-weight: bold; /* 字体加粗 */
                 padding-right: 5px; /* 为滚动条留出空间 */
             }
             QListWidget::item {
@@ -467,9 +415,9 @@ class CollapsiblePlaylist(QWidget):
                 border-bottom: 1px solid rgba(255,255,255,0.1);
             }
             QListWidget::item:selected {
-                background: rgba(33,150,243,0.15);
+                background: rgba(33,150,243,0.25);
                 border-radius: 8px;
-                color: #AACCFF;
+                color: #BBBBBB; /* 将选中项文字颜色改为灰色 */
             }
 
             /* --- 滚动条美化 --- */
@@ -523,6 +471,9 @@ class CollapsiblePlaylist(QWidget):
             }
         ''')
         self.playlist_widget.itemDoubleClicked.connect(self.on_item_double_clicked)
+        # 启用拖放
+        self.playlist_widget.setDragDropMode(QListWidget.DragDropMode.InternalMove)
+        self.playlist_widget.model().rowsMoved.connect(self.save_playlist)
         layout.addWidget(self.playlist_widget)
         
     def filter_playlist(self, text):
@@ -561,7 +512,7 @@ class CollapsiblePlaylist(QWidget):
             self.playlist_widget.takeItem(current_row)
             self.save_playlist()
             
-    def save_playlist(self):
+    def save_playlist(self, *args): # 接收信号可能带来的额外参数
         playlist = []
         for i in range(self.playlist_widget.count()):
             item = self.playlist_widget.item(i)
@@ -586,28 +537,6 @@ class VolumeSlider(QSlider):
         self.setRange(0, 100)
         self.setValue(100)
         self.setFixedWidth(120)
-        self.setStyleSheet('''
-            QSlider {
-                background: transparent;
-            }
-            QSlider::groove:horizontal {
-                background: rgba(255, 255, 255, 0.3);
-                height: 4px;
-                border-radius: 2px;
-            }
-            QSlider::handle:horizontal {
-                background: white;
-                width: 14px;
-                height: 14px;
-                margin: -5px 0; 
-                border-radius: 7px;
-            }
-            QSlider::sub-page:horizontal {
-                background: rgba(33, 150, 243, 0.7);
-                height: 4px;
-                border-radius: 2px;
-            }
-        ''')
         
 class PlayPauseIcon(QWidget):
     def __init__(self, parent=None):
@@ -648,6 +577,18 @@ class PlayPauseIcon(QWidget):
         finally:
             painter.end()
 
+def create_icon(path, color="white"):
+    """从SVG文件创建并着色QIcon"""
+    renderer = QSvgRenderer(path)
+    pixmap = QPixmap(renderer.defaultSize())
+    pixmap.fill(Qt.GlobalColor.transparent)
+    painter = QPainter(pixmap)
+    renderer.render(painter)
+    painter.setCompositionMode(QPainter.CompositionMode.CompositionMode_SourceIn)
+    painter.fillRect(pixmap.rect(), QColor(color))
+    painter.end()
+    return QIcon(pixmap)
+
 class PlayerWindow(QMainWindow):
     def __init__(self):
         super().__init__()
@@ -659,12 +600,17 @@ class PlayerWindow(QMainWindow):
         
         # 添加播放模式相关属性
         self.play_modes = ["sequence", "random", "single"]
-        self.play_mode_icons = ["assets/icons/repeat.svg", "assets/icons/shuffle.svg", "assets/icons/repeat-one.svg"]
+        self.play_mode_icons = [
+            create_icon(os.path.join(ASSETS_PATH, "icons/repeat.svg")), 
+            create_icon(os.path.join(ASSETS_PATH, "icons/shuffle.svg")), 
+            create_icon(os.path.join(ASSETS_PATH, "icons/repeat-one.svg"))
+        ]
         self.current_play_mode_index = 0
         self.play_mode = self.play_modes[self.current_play_mode_index]
         self.playlist_history = []  # 用于随机播放时记录历史
         self.current_index = -1  # 当前播放的索引
-        
+        self.is_playing = False # 在setup_ui之前初始化状态
+
         self.setup_ui()
         self.setup_audio()
         self.bilibili_downloader = BilibiliDownloader()
@@ -675,6 +621,11 @@ class PlayerWindow(QMainWindow):
         self.spectrum_processor.start()
         self.is_downloading = False
         self.performance_mode_enabled = False
+
+        # 加载设置
+        self.load_settings()
+        # 根据设置恢复播放列表选中项
+        self.restore_last_played_track()
 
     def setup_ui(self):
         # 全局字体美化
@@ -702,32 +653,20 @@ class PlayerWindow(QMainWindow):
         control_panel = QWidget()
         control_layout = QVBoxLayout(control_panel)
         control_layout.setSpacing(6)
-        control_panel.setStyleSheet('''
-            background: rgba(255,255,255,0.18);
-            border-radius: 18px;
-            border: 1px solid rgba(255,255,255,0.3);
-            font-family: '微软雅黑', 'Segoe UI', 'Arial', 'sans-serif';
-        ''')
+        control_panel.setObjectName("ControlPanel")
         self.playlist = CollapsiblePlaylist(self)
         self.playlist.play_signal.connect(self.play_file)
         self.playlist.performance_mode_toggled.connect(self.toggle_performance_mode)
         control_layout.addWidget(self.playlist)
-
-        # 添加音量滑块
-        self.volume_slider = VolumeSlider()
-        self.volume_slider.valueChanged.connect(self.set_volume)
-        self.volume_slider.setVisible(False)  # 默认隐藏
-        
-        volume_layout = QHBoxLayout()
-        volume_layout.addStretch()
-        volume_layout.addWidget(self.volume_slider)
-        volume_layout.addStretch()
-        control_layout.addLayout(volume_layout)
-        
-        control_panel.installEventFilter(self) # 安装事件过滤器
         
         content_layout.addWidget(control_panel)
         
+        # --- 右侧面板 ---
+        right_panel = QWidget()
+        right_panel_layout = QVBoxLayout(right_panel)
+        right_panel_layout.setContentsMargins(0, 0, 0, 0)
+        right_panel_layout.setSpacing(15) # 频谱与时间标签的间距
+
         # 创建频谱和按钮的容器 (右侧)
         spectrum_main_container = QWidget()
         # **关键修复**: 设置一个固定的尺寸来防止频谱图随窗口缩放
@@ -744,29 +683,35 @@ class PlayerWindow(QMainWindow):
 
         # 进度条覆盖层
         progress_overlay = QWidget()
-        # **关键修复**: 移除下面的属性，允许进度条接收鼠标事件
-        # progress_overlay.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
-        progress_overlay.setStyleSheet("background: transparent;")
+        progress_overlay.setObjectName("ProgressOverlay")
         progress_layout = QVBoxLayout(progress_overlay)
         progress_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
         progress_layout.addWidget(self.progress_bar)
         spectrum_main_layout.addWidget(progress_overlay, 0, 0)
         
         # --- 按钮 ---
-        self.play_pause_btn = QPushButton(icon=QIcon("assets/icons/play.svg"))
+        self.play_pause_btn = QPushButton()
+        self.play_pause_btn.setObjectName("PlayPauseButton")
         self.play_pause_btn.clicked.connect(self.toggle_play)
 
-        self.prev_btn = QPushButton(icon=QIcon("assets/icons/prev.svg"))
+        self.prev_btn = QPushButton(icon=create_icon(os.path.join(ASSETS_PATH, "icons/prev.svg")))
+        self.prev_btn.setObjectName("PrevButton")
         self.prev_btn.clicked.connect(self.play_previous)
 
-        self.next_btn = QPushButton(icon=QIcon("assets/icons/next.svg"))
+        self.next_btn = QPushButton(icon=create_icon(os.path.join(ASSETS_PATH, "icons/next.svg")))
+        self.next_btn.setObjectName("NextButton")
         self.next_btn.clicked.connect(self.play_next)
 
-        self.stop_btn = QPushButton(icon=QIcon("assets/icons/stop.svg"))
+        self.stop_btn = QPushButton(icon=create_icon(os.path.join(ASSETS_PATH, "icons/stop.svg")))
+        self.stop_btn.setObjectName("StopButton")
         self.stop_btn.clicked.connect(self.stop)
 
-        self.play_mode_btn = QPushButton(icon=QIcon(self.play_mode_icons[self.current_play_mode_index]))
+        self.play_mode_btn = QPushButton(icon=self.play_mode_icons[self.current_play_mode_index])
+        self.play_mode_btn.setObjectName("PlayModeButton")
         self.play_mode_btn.clicked.connect(self.toggle_play_mode)
+
+        # 初始设置播放/暂停按钮图标
+        self.update_play_pause_icon()
 
         # **关键修复**: 统一所有按钮的尺寸和样式
         buttons = [self.play_pause_btn, self.prev_btn, self.next_btn, self.stop_btn, self.play_mode_btn]
@@ -777,28 +722,54 @@ class PlayerWindow(QMainWindow):
 
         # --- 按钮布局 (十字形) ---
         buttons_overlay = QWidget()
-        buttons_overlay.setStyleSheet("background: transparent;")
-        
-        # **关键修复**: 网格布局直接作用在overlay上, 它的大小会自适应内容
+        buttons_overlay.setObjectName("ButtonsOverlay")
         grid_layout = QGridLayout(buttons_overlay)
         grid_layout.setSpacing(15) # 设置按钮间的间距
 
         # 第0行: (空白), 播放模式, (空白)
         grid_layout.addWidget(self.play_mode_btn, 0, 1, Qt.AlignmentFlag.AlignCenter)
-        
-        # 第1行: 上一首, 播放/暂停, 下一首
+        # 第1行: 上一首, 播放/暂停, 下一曲
         grid_layout.addWidget(self.prev_btn, 1, 0, Qt.AlignmentFlag.AlignCenter)
         grid_layout.addWidget(self.play_pause_btn, 1, 1, Qt.AlignmentFlag.AlignCenter)
         grid_layout.addWidget(self.next_btn, 1, 2, Qt.AlignmentFlag.AlignCenter)
-
         # 第2行: (空白), 停止, (空白)
         grid_layout.addWidget(self.stop_btn, 2, 1, Qt.AlignmentFlag.AlignCenter)
-        
+
         # **关键修复**: 将只包含按钮的、尺寸自适应的overlay居中放置在顶层
         # 这样它就不会拦截到旁边进度条的点击事件
         spectrum_main_layout.addWidget(buttons_overlay, 0, 0, Qt.AlignmentFlag.AlignCenter)
 
-        content_layout.addWidget(spectrum_main_container)
+        right_panel_layout.addWidget(spectrum_main_container)
+
+        # 时间显示标签 - 移到频谱下方
+        self.time_label = QLabel("00:00 / 00:00")
+        self.time_label.setObjectName("TimeLabel")
+        self.time_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        right_panel_layout.addWidget(self.time_label, 0, Qt.AlignmentFlag.AlignCenter)
+
+        # --- 音量条容器 (重构) ---
+        # 1. 创建音量条
+        self.volume_slider = VolumeSlider()
+        self.volume_slider.valueChanged.connect(self.set_volume)
+        
+        # 2. 创建一个容器来放置音量条，并将其提升为实例变量
+        self.volume_container = QWidget()
+        volume_container_layout = QHBoxLayout(self.volume_container)
+        volume_container_layout.setContentsMargins(0, 0, 0, 5) # 调高位置，减少顶部边距
+        volume_container_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        volume_container_layout.addWidget(self.volume_slider)
+        # 为容器设置固定大小，创建有效的悬停区域
+        self.volume_container.setFixedSize(150, 30)
+        
+        # 3. 将音量容器添加到右侧面板
+        right_panel_layout.addWidget(self.volume_container, 0, Qt.AlignmentFlag.AlignCenter)
+
+        # 恢复悬停显示/隐藏功能
+        self.volume_slider.setVisible(False)
+        # 仅在容器上安装事件过滤器
+        self.volume_container.installEventFilter(self)
+        
+        content_layout.addWidget(right_panel)
         
         self.bg_widget.setLayout(content_layout)
 
@@ -820,19 +791,7 @@ class PlayerWindow(QMainWindow):
 
     def set_button_style(self, btn, size=40):
         btn.setFixedSize(size, size)
-        btn.setStyleSheet(f'''
-            QPushButton {{
-                background: rgba(255,255,255,0.25);
-                border: none;
-                border-radius: {size // 2}px;
-            }}
-            QPushButton:hover {{
-                background: rgba(33,150,243,0.12);
-            }}
-            QPushButton:pressed {{
-                background: rgba(33,150,243,0.18);
-            }}
-        ''')
+        # 样式现在完全由QSS文件控制
 
     def update_background(self):
         self.bg_phase = (self.bg_phase + 0.01) % (2 * np.pi)
@@ -842,7 +801,6 @@ class PlayerWindow(QMainWindow):
         """初始化音频播放器"""
         self.player = None
         self.current_file = None
-        self.is_playing = False
         self.start_time = time.time()
 
     def load_file(self, file_path):
@@ -855,6 +813,11 @@ class PlayerWindow(QMainWindow):
         self.player = AudioPlayer(self.current_file)
         self.player.play()
         self.stop_btn.setText("停止")
+        self.is_playing = True
+        self.update_play_pause_icon()
+        # 清空频谱
+        self.spectrum.update_spectrum(np.zeros(self.config.NUM_BARS), self.start_time)
+        self.time_label.setText("00:00 / 00:00")
 
     def select_file(self):
         file_name, _ = QFileDialog.getOpenFileName(
@@ -865,14 +828,16 @@ class PlayerWindow(QMainWindow):
             self.playlist.add_item(file_name)
 
     def play_file(self, file_path):
-        """播放指定文件"""
+        """播放指定文件，并持久化最后播放曲目"""
         if self.player:
             self.player.stop()
         self.player = AudioPlayer(file_path)
+        # 同步音量到新的播放器实例
+        self.player.set_volume(self.volume_slider.value() / 100.0)
         self.current_file = file_path
         self.player.play()
         self.is_playing = True
-        self.play_pause_btn.setIcon(QIcon("assets/icons/pause.svg"))
+        self.update_play_pause_icon()
         self.stop_btn.setEnabled(True)
         # 清空频谱
         self.spectrum.update_spectrum(np.zeros(self.config.NUM_BARS), self.start_time)
@@ -886,6 +851,9 @@ class PlayerWindow(QMainWindow):
                 
         # 连接播放结束信号
         self.player.playback_finished.connect(self.on_playback_finished)
+        # 记录并保存最后播放文件
+        self.settings["last_played_file"] = file_path
+        self.save_settings()
 
     def on_playback_finished(self):
         """处理播放结束事件"""
@@ -911,32 +879,35 @@ class PlayerWindow(QMainWindow):
         if self.is_playing:
             self.player.pause()
             self.is_playing = False
-            self.play_pause_btn.setIcon(QIcon("assets/icons/play.svg"))
-            # 清空频谱
-            self.spectrum.update_spectrum(np.zeros(self.config.NUM_BARS), self.start_time)
         else:
             self.player.resume()
             self.is_playing = True
-            self.play_pause_btn.setIcon(QIcon("assets/icons/pause.svg"))
+        self.update_play_pause_icon()
 
     def stop(self):
         if self.player:
             self.player.stop()
             self.is_playing = False
-            self.play_pause_btn.setIcon(QIcon("assets/icons/play.svg"))
-            # 清空频谱
-            self.spectrum.update_spectrum(np.zeros(self.config.NUM_BARS), self.start_time)
+        self.update_play_pause_icon()
+        self.time_label.setText("00:00 / 00:00")
+        # 清空频谱
+        self.spectrum.update_spectrum(np.zeros(self.config.NUM_BARS), self.start_time)
 
     def update_spectrum(self):
-        if self.player:
-            # --- 进度条更新 (始终执行) ---
+        if self.player and self.is_playing:
+            # --- 进度条与时间更新 ---
             try:
                 pos = self.player.get_position()
                 dur = self.player.get_duration()
                 progress = pos / dur if dur > 0 else 0
                 self.progress_bar.set_progress(progress)
+                
+                # 更新时间显示
+                self.time_label.setText(f"{self.format_time(pos)} / {self.format_time(dur)}")
+
             except Exception:
                 self.progress_bar.set_progress(0)
+                self.time_label.setText("00:00 / 00:00")
 
             # --- 频谱更新 (如果性能模式关闭) ---
             if not self.performance_mode_enabled:
@@ -959,8 +930,11 @@ class PlayerWindow(QMainWindow):
             if not self.performance_mode_enabled:
                 heights = np.zeros(self.config.NUM_BARS)
                 self.spectrum.update_spectrum(heights, self.start_time)
+            self.time_label.setText("00:00 / 00:00")
 
     def closeEvent(self, event):
+        # 关闭窗口前保存设置
+        self.save_settings()
         if self.player:
             self.player.stop()
         if hasattr(self, 'spectrum_processor'):
@@ -995,10 +969,13 @@ class PlayerWindow(QMainWindow):
             self.is_downloading = False
 
     def toggle_play_mode(self):
-        """切换播放模式"""
+        """切换播放模式并持久化"""
         self.current_play_mode_index = (self.current_play_mode_index + 1) % len(self.play_modes)
         self.play_mode = self.play_modes[self.current_play_mode_index]
-        self.play_mode_btn.setIcon(QIcon(self.play_mode_icons[self.current_play_mode_index]))
+        self.play_mode_btn.setIcon(self.play_mode_icons[self.current_play_mode_index])
+        # 持久化播放模式
+        self.settings["play_mode"] = self.play_mode
+        self.save_settings()
 
     def set_play_mode(self, mode):
         """设置播放模式"""
@@ -1006,7 +983,7 @@ class PlayerWindow(QMainWindow):
             idx = self.play_modes.index(mode)
             self.current_play_mode_index = idx
             self.play_mode = mode
-            self.play_mode_btn.setIcon(QIcon(self.play_mode_icons[idx]))
+            self.play_mode_btn.setIcon(self.play_mode_icons[idx])
         except ValueError:
             print(f"警告: 未知的播放模式 '{mode}'")
 
@@ -1092,7 +1069,7 @@ class PlayerWindow(QMainWindow):
             self.player.seek(new_position)
             self.player.resume()
             self.is_playing = True # 确保状态正确
-            self.play_pause_btn.setIcon(QIcon("assets/icons/pause.svg"))
+            self.update_play_pause_icon()
 
     def toggle_performance_mode(self, checked):
         """切换性能模式"""
@@ -1101,22 +1078,94 @@ class PlayerWindow(QMainWindow):
 
     def eventFilter(self, source, event):
         """事件过滤器，用于处理音量条的显示和隐藏"""
-        if source.isWidgetType() and source.styleSheet(): # 确保是我们的带样式的面板
+        if source == self.volume_container:
             if event.type() == event.Type.Enter:
                 self.volume_slider.setVisible(True)
             elif event.type() == event.Type.Leave:
-                self.volume_slider.setVisible(False)
+                # 使用全局光标位置来判断是否真的离开了容器区域
+                # 这能避免在鼠标进入子控件(音量条)时错误地触发隐藏
+                if not self.volume_container.geometry().contains(self.volume_container.mapFromGlobal(QCursor.pos())):
+                    self.volume_slider.setVisible(False)
+            return True # 事件已处理
         return super().eventFilter(source, event)
 
     def set_volume(self, value):
-        """设置音量"""
+        """设置音量并持久化"""
         if self.player:
+            # 改为线性映射，使音量调节更直观
             self.player.set_volume(value / 100.0)
+        # 更新并保存设置（确保设置已初始化）
+        if hasattr(self, "settings"):
+            self.settings["volume"] = value
+            self.save_settings()
+
+    def load_settings(self):
+        """加载播放器设置"""
+        try:
+            if os.path.exists(self.config.SETTINGS_FILE):
+                with open(self.config.SETTINGS_FILE, 'r') as f:
+                    self.settings = json.load(f)
+            else:
+                # 如果文件不存在，使用默认值
+                self.settings = {"volume": 50, "play_mode": "sequence", "last_played_file": ""}
+        except (json.JSONDecodeError, FileNotFoundError):
+            # 如果文件损坏或无法读取，使用默认值
+            self.settings = {"volume": 50, "play_mode": "sequence", "last_played_file": ""}
+
+        # 恢复音量（线性）
+        self.volume_slider.setValue(self.settings.get("volume", 100))
+        # 恢复播放模式
+        self.set_play_mode(self.settings.get("play_mode", "sequence"))
+
+    def save_settings(self):
+        """保存播放器设置"""
+        try:
+            with open(self.config.SETTINGS_FILE, 'w') as f:
+                json.dump(self.settings, f, indent=4)
+        except IOError as e:
+            print(f"无法保存设置: {e}")
+
+    def restore_last_played_track(self):
+        """在播放列表中定位并选中上一次播放的曲目"""
+        last_file = self.settings.get("last_played_file")
+        if not last_file:
+            return
+
+        for i in range(self.playlist.playlist_widget.count()):
+            item = self.playlist.playlist_widget.item(i)
+            if item.data(Qt.ItemDataRole.UserRole) == last_file:
+                self.current_index = i
+                self.playlist.playlist_widget.setCurrentRow(i)
+                # 如有需要可在此更新UI显示当前曲目
+                break
+
+    def format_time(self, seconds):
+        if seconds is None or seconds < 0:
+            return "00:00"
+        minutes = int(seconds // 60)
+        seconds = int(seconds % 60)
+        return f"{minutes:02d}:{seconds:02d}"
+
+    def update_play_pause_icon(self):
+        """根据播放状态更新播放/暂停按钮的图标"""
+        if self.is_playing:
+            self.play_pause_btn.setIcon(create_icon(os.path.join(ASSETS_PATH, "icons/pause.svg")))
+        else:
+            self.play_pause_btn.setIcon(create_icon(os.path.join(ASSETS_PATH, "icons/play.svg")))
 
 def main():
     # 开启全局抗锯齿，使频谱更平滑
     pg.setConfigOptions(antialias=True)
     app = QApplication(sys.argv)
+    
+    # 加载外部样式表
+    stylesheet_path = os.path.join(ASSETS_PATH, "stylesheet.qss")
+    try:
+        with open(stylesheet_path, "r", encoding="utf-8") as f:
+            app.setStyleSheet(f.read())
+    except FileNotFoundError:
+        print(f"警告: {stylesheet_path} 未找到，将使用默认样式。")
+
     window = PlayerWindow()
     window.show()
     sys.exit(app.exec())
