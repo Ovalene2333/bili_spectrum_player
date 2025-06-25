@@ -83,7 +83,16 @@ class BilibiliDownloader:
         if data['code'] != 0:
             raise Exception(f"获取音频URL失败: {data['message']}")
             
-        return data['data']['dash']['audio'][0]['baseUrl']
+        # 选择带宽(码率)最高的音频流
+        audio_streams = data['data']['dash']['audio']
+        if not audio_streams:
+            raise Exception("未找到音频流")
+
+        # B站返回的 audio 列表通常按质量从低到高排列，但并不保证。
+        # 为了稳妥起见，这里按 bandwidth 字段进行排序，选择带宽最高的那一路音频。
+        best_audio = max(audio_streams, key=lambda x: x.get('bandwidth', 0))
+
+        return best_audio['baseUrl']
         
     def download_audio(self, url, output_path):
         """下载音频并转换为MP3格式"""
@@ -113,14 +122,24 @@ class BilibiliDownloader:
                 startupinfo.wShowWindow = subprocess.SW_HIDE
                 creation_flags = subprocess.CREATE_NO_WINDOW
 
-            subprocess.run([
-                'ffmpeg', '-i', temp_path,
-                '-vn', '-acodec', 'libmp3lame',
-                '-q:a', '0', output_path, "-y"
-            ], check=True, startupinfo=startupinfo, creationflags=creation_flags)
+            
+            try:
+                # 优先尝试直接复制音频流
+                subprocess.run([
+                    'ffmpeg', '-i', temp_path,
+                    '-vn', '-acodec', 'copy', output_path, "-y"
+                ], check=True, startupinfo=startupinfo, creationflags=creation_flags)
+            except subprocess.CalledProcessError:
+                # 如果复制失败，尝试转换为aac格式
+                subprocess.run([
+                    'ffmpeg', '-i', temp_path,
+                    '-vn', '-acodec', 'aac',
+                    '-q:a', '0', output_path, "-y"
+                ], check=True, startupinfo=startupinfo, creationflags=creation_flags)
             
             # 清理临时文件
             os.unlink(temp_path)
+
             
             return output_path
             
@@ -137,6 +156,6 @@ class BilibiliDownloader:
         safe_title = re.sub(r'[\\/:*?"<>|]', '_', title)
         if output_path is None:
             # 使用实例的下载路径
-            output_path = os.path.join(self.download_path, f"{safe_title}.mp3")
+            output_path = os.path.join(self.download_path, f"{safe_title}.aac")
         audio_url = self.get_audio_url(bvid)
         return self.download_audio(audio_url, output_path) 

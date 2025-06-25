@@ -8,6 +8,7 @@ playlist.json
 downloads/
 dist/
 build/
+config/
 *.spec
 *.sh
 # *.bat
