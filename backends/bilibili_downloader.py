@@ -9,7 +9,7 @@ import time
 import sys
 
 class BilibiliDownloader:
-    def __init__(self, download_path=None):
+    def __init__(self, download_path=None, proxy=None):
         self.headers = {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
         }
@@ -19,6 +19,14 @@ class BilibiliDownloader:
         else:
             self.download_path = download_path
         
+        # 设置代理
+        self.proxy = None
+        if proxy and proxy.strip():
+            self.proxy = {
+                'http': proxy.strip(),
+                'https': proxy.strip()
+            }
+        
         # 确保下载目录存在
         os.makedirs(self.download_path, exist_ok=True)
     
@@ -26,6 +34,15 @@ class BilibiliDownloader:
         """设置下载路径"""
         self.download_path = path
         os.makedirs(self.download_path, exist_ok=True)
+    
+    def set_proxy(self, proxy):
+        """设置代理"""
+        self.proxy = None
+        if proxy and proxy.strip():
+            self.proxy = {
+                'http': proxy.strip(),
+                'https': proxy.strip()
+            }
         
     def get_bvid_from_url(self, url):
         """从URL中提取BVID"""
@@ -49,7 +66,7 @@ class BilibiliDownloader:
     def get_video_info(self, bvid):
         """获取视频信息"""
         url = f'https://api.bilibili.com/x/web-interface/view?bvid={bvid}'
-        response = requests.get(url, headers=self.headers)
+        response = requests.get(url, headers=self.headers, proxies=self.proxy)
         data = response.json()
         
         if data['code'] != 0:
@@ -60,7 +77,7 @@ class BilibiliDownloader:
     def get_audio_url(self, bvid):
         """获取音频URL"""
         url = f'https://api.bilibili.com/x/player/playurl?bvid={bvid}&cid={self.get_video_info(bvid)["cid"]}&qn=0&fnval=16&fourk=1'
-        response = requests.get(url, headers=self.headers)
+        response = requests.get(url, headers=self.headers, proxies=self.proxy)
         data = response.json()
         
         if data['code'] != 0:
@@ -78,7 +95,7 @@ class BilibiliDownloader:
             # 下载音频，添加Referer头
             headers = self.headers.copy()
             headers['Referer'] = 'https://www.bilibili.com/'
-            response = requests.get(url, headers=headers, stream=True)
+            response = requests.get(url, headers=headers, proxies=self.proxy, stream=True)
             response.raise_for_status()
             
             with open(temp_path, 'wb') as f:
@@ -99,7 +116,7 @@ class BilibiliDownloader:
             subprocess.run([
                 'ffmpeg', '-i', temp_path,
                 '-vn', '-acodec', 'libmp3lame',
-                '-q:a', '2', output_path, "-y"
+                '-q:a', '0', output_path, "-y"
             ], check=True, startupinfo=startupinfo, creationflags=creation_flags)
             
             # 清理临时文件

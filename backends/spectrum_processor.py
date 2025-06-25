@@ -17,6 +17,11 @@ class SpectrumProcessor:
         self._last_db_heights = None
         self._window = np.hanning(self.config.CHUNK_SIZE)
         self._init_fft_bins()
+        
+        # 新增：缓存三角函数值以避免重复计算
+        self._precomputed_angles = np.pi / 2 + np.linspace(0, 2 * np.pi, self.config.NUM_BARS, endpoint=False)
+        self._cos_cache = np.cos(self._precomputed_angles)
+        self._sin_cache = np.sin(self._precomputed_angles)
 
     def _init_fft_bins(self):
         """预计算FFT频率分箱的索引。"""
@@ -90,7 +95,7 @@ class SpectrumProcessor:
                         heights[i] = np.max(segment)
 
             # 对数缩放
-            db_heights = 2.5e2 * np.log(1 + heights**0.35)
+            db_heights = 4e2 * np.log(1 + np.sqrt(heights))
 
             # 平滑处理
             if self._last_db_heights is not None:
@@ -99,9 +104,6 @@ class SpectrumProcessor:
                 display_heights = db_heights
 
             self._last_db_heights = display_heights.copy()
-
-            # 限幅
-            display_heights = np.clip(display_heights, 0, self.config.MAX_DB_VALUE)
 
             try:
                 # 丢弃旧数据，放入新数据

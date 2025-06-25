@@ -30,7 +30,8 @@ QWidget {
     border: 1px solid rgba(255,255,255,0.4);
 }
 
-#DownloadButton, #SelectFileButton, #DeleteButton, #PerformanceModeButton {
+#DownloadButton, #SelectFileButton, #DeleteButton, #PerformanceModeButton, 
+#AddMusicButton, #SettingsButton, #NewPlaylistButton, #ManagePlaylistButton {
     background: rgba(255,255,255,0.15);
     border: 1px solid rgba(255,255,255,0.3);
     border-radius: 12px;
@@ -39,13 +40,66 @@ QWidget {
     font-size: 12px;
 }
 
-#DownloadButton:hover, #SelectFileButton:hover, #DeleteButton:hover, #PerformanceModeButton:hover {
+#DownloadButton:hover, #SelectFileButton:hover, #DeleteButton:hover, #PerformanceModeButton:hover,
+#AddMusicButton:hover, #SettingsButton:hover, #NewPlaylistButton:hover, #ManagePlaylistButton:hover {
     background: rgba(255,255,255,0.2);
 }
 
 #PerformanceModeButton:checked {
     background: rgba(33,150,243,0.25);
     border: 1px solid rgba(33,150,243,0.4);
+}
+
+/* 播放列表下拉框样式 */
+#PlaylistCombo {
+    background: rgba(255,255,255,0.15);
+    border: 1px solid rgba(255,255,255,0.3);
+    border-radius: 12px;
+    padding: 6px 12px;
+    color: white;
+    font-size: 12px;
+    selection-background-color: rgba(33,150,243,0.3);
+}
+
+#PlaylistCombo:hover {
+    background: rgba(255,255,255,0.2);
+}
+
+#PlaylistCombo::drop-down {
+    subcontrol-origin: padding;
+    subcontrol-position: top right;
+    width: 20px;
+    border-left: 1px solid rgba(255,255,255,0.3);
+    border-top-right-radius: 12px;
+    border-bottom-right-radius: 12px;
+    background: rgba(255,255,255,0.1);
+}
+
+#PlaylistCombo::down-arrow {
+    image: none;
+    border-left: 4px solid transparent;
+    border-right: 4px solid transparent;
+    border-top: 6px solid rgba(255,255,255,0.7);
+    width: 0;
+    height: 0;
+}
+
+#PlaylistCombo QAbstractItemView {
+    background: rgba(40, 40, 40, 240);
+    color: white;
+    border: 1px solid rgba(255,255,255,0.3);
+    border-radius: 8px;
+    selection-background-color: rgba(33,150,243,0.3);
+    outline: none;
+}
+
+#PlaylistCombo QAbstractItemView::item {
+    padding: 8px 12px;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+}
+
+#PlaylistCombo QAbstractItemView::item:selected {
+    background: rgba(33,150,243,0.3);
 }
 
 QListWidget {
@@ -179,4 +233,149 @@ QSlider::sub-page:horizontal {
 
 #ProgressOverlay, #ButtonsOverlay {
     background: transparent;
+}
+
+/* =========================================================================
+   Dialog Styles
+   ========================================================================= */
+
+/* AddMusicDialog */
+QDialog#AddMusicDialog {
+    background-color: #f5f5f5;
+}
+
+QDialog#AddMusicDialog QLabel {
+    color: #333;
+}
+
+QDialog#AddMusicDialog QLineEdit {
+    padding: 8px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 12px;
+    background: white;
+    color: #000000;
+}
+
+QDialog#AddMusicDialog QPushButton {
+    background-color: #2196F3;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 4px;
+    font-weight: bold;
+    font-size: 12px;
+}
+
+QDialog#AddMusicDialog QPushButton:hover {
+    background-color: #1976D2;
+}
+
+QDialog#AddMusicDialog QPushButton:pressed {
+    background-color: #1565C0;
+}
+
+QDialog#AddMusicDialog QPushButton:disabled {
+    background-color: #cccccc;
+    color: #666666;
+}
+
+/* PlaylistManagerDialog */
+QDialog#PlaylistManagerDialog {
+    background-color: #f0f0f0;
+}
+
+QDialog#PlaylistManagerDialog QListWidget {
+    background-color: white;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    color: #333;
+}
+
+QDialog#PlaylistManagerDialog QListWidget::item {
+    padding: 8px;
+    border-bottom: 1px solid #eee;
+}
+
+QDialog#PlaylistManagerDialog QListWidget::item:selected {
+    background-color: #e3f2fd;
+}
+
+QDialog#PlaylistManagerDialog QPushButton {
+    background-color: #2196F3;
+    color: white;
+    border: none;
+    padding: 6px 12px;
+    border-radius: 4px;
+    font-weight: bold;
+}
+
+QDialog#PlaylistManagerDialog QPushButton:hover {
+    background-color: #1976D2;
+}
+
+QDialog#PlaylistManagerDialog QPushButton:pressed {
+    background-color: #1565C0;
+}
+
+/* SettingsDialog */
+QDialog#SettingsDialog {
+    background-color: #f0f0f0;
+}
+
+QDialog#SettingsDialog QLabel {
+    color: #333;
+    font-size: 12px;
+}
+
+QDialog#SettingsDialog QLineEdit {
+    padding: 8px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 12px;
+    background: white;
+    color: #000000;
+}
+
+QDialog#SettingsDialog QPushButton {
+    background-color: #2196F3;
+    color: white;
+    border: none;
+    padding: 6px 12px;
+    border-radius: 4px;
+    font-weight: bold;
+}
+
+QDialog#SettingsDialog QPushButton:hover {
+    background-color: #1976D2;
+}
+
+QDialog#SettingsDialog QPushButton:pressed {
+    background-color: #1565C0;
+}
+
+QDialog#SettingsDialog QTextBrowser {
+    background: #fafafa;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    padding: 10px;
+    color: #333;
+}
+
+/* Context Menu Styles */
+QMenu#ContextMenu {
+    background-color: rgba(40, 40, 40, 240);
+    color: white;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 6px;
+    padding: 5px;
+}
+
+QMenu#ContextMenu::item {
+    padding: 8px 20px;
+    border-radius: 4px;
+}
+
+QMenu#ContextMenu::item:selected {
+    background-color: rgba(33, 150, 243, 0.3);
 }

@@ -1,6 +1,7 @@
 {
-    "volume": 28,
+    "volume": 66,
     "play_mode": "random",
-    "last_played_file": "C:/Users/Ovalene/Music/bili_spectrum_player/\u300a\u5d29\u574f\uff1a\u661f\u7a79\u94c1\u9053\u300b\u77e5\u66f4\u9e1f\u89d2\u8272PV\u2014\u2014\u300c\u5b64\u72ec\u6447\u6446\u300d.mp3",
-    "download_path": "C:/Users/Ovalene/Music/bili_spectrum_player"
+    "last_played_file": "C:/Users/Ovalene/Music/bili_spectrum_player\\\u300c\u4e0e\u541b\u5171\u300dHere With You - Asher Monroe \u767e\u4e07\u7ea7\u88c5\u5907\u8bd5\u542c\u3010Hi-Res\u3011.mp3",
+    "download_path": "C:/Users/Ovalene/Music/bili_spectrum_player",
+    "proxy": "http://127.0.0.1:7890"
 }
