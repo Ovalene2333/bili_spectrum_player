@@ -31,7 +31,7 @@ QWidget {
 }
 
 #DownloadButton, #SelectFileButton, #DeleteButton, #PerformanceModeButton, 
-#AddMusicButton, #SettingsButton, #NewPlaylistButton, #ManagePlaylistButton {
+#AddMusicButton, #LocateButton, #SettingsButton, #NewPlaylistButton, #ManagePlaylistButton {
     background: rgba(255,255,255,0.15);
     border: 1px solid rgba(255,255,255,0.3);
     border-radius: 12px;
@@ -41,7 +41,7 @@ QWidget {
 }
 
 #DownloadButton:hover, #SelectFileButton:hover, #DeleteButton:hover, #PerformanceModeButton:hover,
-#AddMusicButton:hover, #SettingsButton:hover, #NewPlaylistButton:hover, #ManagePlaylistButton:hover {
+#AddMusicButton:hover, #LocateButton:hover, #SettingsButton:hover, #NewPlaylistButton:hover, #ManagePlaylistButton:hover {
     background: rgba(255,255,255,0.2);
 }
 

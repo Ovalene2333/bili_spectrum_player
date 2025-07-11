@@ -111,6 +111,10 @@ class PlayerWindow(QMainWindow):
         self.playlist.add_to_next_play_requested.connect(self.add_to_next_play)
         # 连接设置按钮信号
         self.playlist.settings_btn.clicked.connect(self.open_settings)
+        # 连接播放列表选择变化信号
+        self.playlist.playlist_widget.itemSelectionChanged.connect(self.on_playlist_selection_changed)
+        # 连接定位当前歌曲信号
+        self.playlist.locate_current_song_requested.connect(self.locate_current_song)
         control_layout.addWidget(self.playlist)
         
         content_layout.addWidget(control_panel)
@@ -149,22 +153,26 @@ class PlayerWindow(QMainWindow):
         self.play_pause_btn.setToolTip("播放/暂停")
         self.play_pause_btn.clicked.connect(self.toggle_play)
 
-        self.prev_btn = QPushButton(icon=create_icon(get_icon_path("prev.svg")))
+        self.prev_btn = QPushButton()
+        self.prev_btn.setIcon(create_icon(get_icon_path("prev.svg")))
         self.prev_btn.setObjectName("PrevButton")
         self.prev_btn.setToolTip("上一首")
         self.prev_btn.clicked.connect(self.play_previous)
 
-        self.next_btn = QPushButton(icon=create_icon(get_icon_path("next.svg")))
+        self.next_btn = QPushButton()
+        self.next_btn.setIcon(create_icon(get_icon_path("next.svg")))
         self.next_btn.setObjectName("NextButton")
         self.next_btn.setToolTip("下一首")
         self.next_btn.clicked.connect(self.play_next)
 
-        self.stop_btn = QPushButton(icon=create_icon(get_icon_path("stop.svg")))
+        self.stop_btn = QPushButton()
+        self.stop_btn.setIcon(create_icon(get_icon_path("stop.svg")))
         self.stop_btn.setObjectName("StopButton")
         self.stop_btn.setToolTip("停止")
         self.stop_btn.clicked.connect(self.stop)
 
-        self.play_mode_btn = QPushButton(icon=self.play_mode_icons[self.current_play_mode_index])
+        self.play_mode_btn = QPushButton()
+        self.play_mode_btn.setIcon(self.play_mode_icons[self.current_play_mode_index])
         self.play_mode_btn.setObjectName("PlayModeButton")
         self.play_mode_btn.setToolTip("切换播放模式（顺序/随机/单曲循环）")
         self.play_mode_btn.clicked.connect(self.toggle_play_mode)
@@ -291,11 +299,12 @@ class PlayerWindow(QMainWindow):
         # 清空频谱
         self.spectrum.update_spectrum(np.zeros(self.config.NUM_BARS), self.start_time)
         
-        # 更新当前索引
+        # 更新当前索引并选中对应的播放列表项
         for i in range(self.playlist.playlist_widget.count()):
             item = self.playlist.playlist_widget.item(i)
-            if item.data(Qt.ItemDataRole.UserRole) == file_path:
+            if item and item.data(Qt.ItemDataRole.UserRole) == file_path:
                 self.current_index = i
+                self.playlist.playlist_widget.setCurrentRow(i)
                 break
                 
         # 连接播放结束信号
@@ -449,12 +458,6 @@ class PlayerWindow(QMainWindow):
         if not self.playlist.playlist_widget.count():
             return
             
-        if self.play_mode == "single":
-            # 单曲循环模式，重新播放当前歌曲
-            if self.current_file:
-                self.play_file(self.current_file)
-            return
-            
         if self.play_mode == "random":
             # 随机播放模式
             import random
@@ -468,7 +471,7 @@ class PlayerWindow(QMainWindow):
             else:
                 self.current_index = 0
         else:
-            # 顺序播放模式
+            # 顺序播放模式和单曲循环模式都切换到下一首
             self.current_index = (self.current_index + 1) % self.playlist.playlist_widget.count()
             
         # 获取并播放下一首
@@ -481,12 +484,6 @@ class PlayerWindow(QMainWindow):
     def play_previous(self):
         """播放上一首"""
         if not self.playlist.playlist_widget.count():
-            return
-            
-        if self.play_mode == "single":
-            # 单曲循环模式，重新播放当前歌曲
-            if self.current_file:
-                self.play_file(self.current_file)
             return
             
         if self.play_mode == "random":
@@ -502,7 +499,7 @@ class PlayerWindow(QMainWindow):
             else:
                 self.current_index = 0
         else:
-            # 顺序播放模式
+            # 顺序播放模式和单曲循环模式都切换到上一首
             self.current_index = (self.current_index - 1) % self.playlist.playlist_widget.count()
             
         # 获取并播放上一首
@@ -622,12 +619,28 @@ class PlayerWindow(QMainWindow):
                 self.playlist.playlist_widget.setCurrentRow(i)
                 break
 
+    def on_playlist_selection_changed(self):
+        """处理播放列表选择变化"""
+        self.update_play_pause_icon()
+
     def update_play_pause_icon(self):
-        """根据播放状态更新播放/暂停按钮的图标"""
-        if self.is_playing:
-            self.play_pause_btn.setIcon(create_icon(get_icon_path("pause.svg")))
+        """根据播放状态和选中歌曲更新播放/暂停按钮的图标"""
+        # 获取当前选中的歌曲
+        selected_items = self.playlist.playlist_widget.selectedItems()
+        if selected_items:
+            selected_file = selected_items[0].data(Qt.ItemDataRole.UserRole)
+            # 如果正在播放且选中的是当前播放的歌曲，显示暂停图标
+            if self.is_playing and selected_file == self.current_file:
+                self.play_pause_btn.setIcon(create_icon(get_icon_path("pause.svg")))
+            else:
+                # 其他情况显示播放图标
+                self.play_pause_btn.setIcon(create_icon(get_icon_path("play.svg")))
         else:
-            self.play_pause_btn.setIcon(create_icon(get_icon_path("play.svg")))
+            # 没有选中项时，根据播放状态显示图标
+            if self.is_playing:
+                self.play_pause_btn.setIcon(create_icon(get_icon_path("pause.svg")))
+            else:
+                self.play_pause_btn.setIcon(create_icon(get_icon_path("play.svg")))
     
     def open_settings(self):
         """打开设置对话框"""
@@ -651,6 +664,13 @@ class PlayerWindow(QMainWindow):
                 self.bilibili_downloader.set_download_path(download_path)
                 proxy = self.settings.get("proxy", "")
                 self.bilibili_downloader.set_proxy(proxy)
+    
+    def locate_current_song(self):
+        """定位当前播放的歌曲"""
+        if hasattr(self, 'playlist') and self.current_file:
+            self.playlist.locate_current_song(self.current_file)
+        else:
+            QMessageBox.information(self, "提示", "当前没有播放歌曲")
 
 def main():
     # 开启全局抗锯齿，使频谱更平滑

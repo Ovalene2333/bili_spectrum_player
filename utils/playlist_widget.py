@@ -1,4 +1,6 @@
 import os
+import subprocess
+import sys
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QComboBox, QLineEdit,
     QListWidget, QListWidgetItem, QMenu, QMessageBox, QDialog
@@ -15,6 +17,7 @@ class CollapsiblePlaylist(QWidget):
     performance_mode_toggled = pyqtSignal(bool)
     add_music_requested = pyqtSignal()
     add_to_next_play_requested = pyqtSignal(str)  # 添加到下一首播放信号
+    locate_current_song_requested = pyqtSignal()  # 定位当前歌曲信号
     
     def __init__(self, parent=None, playlist_manager=None):
         super().__init__(parent)
@@ -45,6 +48,15 @@ class CollapsiblePlaylist(QWidget):
         self.add_music_btn.setFixedSize(32, 32)
         self.add_music_btn.clicked.connect(self.add_music_requested.emit)
         top_row_layout.addWidget(self.add_music_btn)
+        
+        # 定位当前歌曲按钮
+        self.locate_btn = QPushButton()
+        self.locate_btn.setIcon(create_icon(get_icon_path("locate.svg")))
+        self.locate_btn.setObjectName("LocateButton")
+        self.locate_btn.setToolTip("定位当前歌曲")
+        self.locate_btn.setFixedSize(32, 32)
+        self.locate_btn.clicked.connect(self.locate_current_song_requested.emit)
+        top_row_layout.addWidget(self.locate_btn)
         
         # 性能模式按钮（改为图标）
         self.performance_mode_btn = QPushButton()
@@ -212,6 +224,10 @@ class CollapsiblePlaylist(QWidget):
         next_play_action = menu.addAction("下一首播放")
         next_play_action.triggered.connect(lambda: self.add_to_next_play(position))
         
+        # 打开文件位置
+        open_location_action = menu.addAction("打开文件位置")
+        open_location_action.triggered.connect(lambda: self.open_file_location(position))
+        
         # 分隔线
         menu.addSeparator()
         
@@ -231,6 +247,42 @@ class CollapsiblePlaylist(QWidget):
         if item:
             file_path = item.data(Qt.ItemDataRole.UserRole)
             self.add_to_next_play_requested.emit(file_path)
+    
+    def open_file_location(self, position):
+        """打开文件位置"""
+        item = self.playlist_widget.itemAt(position)
+        if not item:
+            return
+            
+        file_path = item.data(Qt.ItemDataRole.UserRole)
+        if not os.path.exists(file_path):
+            QMessageBox.warning(self, "文件不存在", f"文件 '{os.path.basename(file_path)}' 不存在")
+            return
+        
+        try:
+            if sys.platform == "win32":
+                # Windows: 使用 explorer 打开并选中文件
+                subprocess.run(['explorer', '/select,', os.path.normpath(file_path)], check=False)
+            elif sys.platform == "darwin":
+                # macOS: 使用 open -R 打开并选中文件
+                subprocess.run(['open', '-R', file_path], check=False)
+            else:
+                # Linux: 尝试使用不同的文件管理器
+                file_dir = os.path.dirname(file_path)
+                # 尝试常见的文件管理器
+                file_managers = ['nautilus', 'dolphin', 'thunar', 'pcmanfm', 'caja']
+                for fm in file_managers:
+                    try:
+                        subprocess.run([fm, file_dir], check=True)
+                        break
+                    except (subprocess.CalledProcessError, FileNotFoundError):
+                        continue
+                else:
+                    # 如果所有文件管理器都失败，尝试使用 xdg-open
+                    subprocess.run(['xdg-open', file_dir], check=False)
+                    
+        except Exception as e:
+            QMessageBox.critical(self, "打开失败", f"无法打开文件位置：{str(e)}")
     
     def remove_from_playlist(self, position):
         """从播放列表移除项目"""
@@ -348,4 +400,22 @@ class CollapsiblePlaylist(QWidget):
         """处理项目移动"""
         if self.playlist_manager:
             current_playlist = self.playlist_manager.current_playlist
-            self.playlist_manager.move_in_playlist(current_playlist, start, row) 
+            self.playlist_manager.move_in_playlist(current_playlist, start, row)
+    
+    def locate_current_song(self, current_file_path):
+        """定位当前播放的歌曲"""
+        if not current_file_path:
+            return
+            
+        # 查找当前播放歌曲在播放列表中的位置
+        for i in range(self.playlist_widget.count()):
+            item = self.playlist_widget.item(i)
+            if item and item.data(Qt.ItemDataRole.UserRole) == current_file_path:
+                # 选中并滚动到当前歌曲
+                self.playlist_widget.setCurrentRow(i)
+                self.playlist_widget.scrollToItem(item, QListWidget.ScrollHint.PositionAtCenter)
+                return
+        
+        # 如果没有找到，显示提示
+        from PyQt6.QtWidgets import QMessageBox
+        QMessageBox.information(self, "提示", "当前播放的歌曲不在播放列表中") 

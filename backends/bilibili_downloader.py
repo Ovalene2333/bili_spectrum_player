@@ -122,7 +122,8 @@ class BilibiliDownloader:
                 startupinfo.wShowWindow = subprocess.SW_HIDE
                 creation_flags = subprocess.CREATE_NO_WINDOW
 
-            
+
+            # print(temp_path)
             try:
                 # 优先尝试直接复制音频流
                 subprocess.run([
@@ -134,7 +135,7 @@ class BilibiliDownloader:
                 subprocess.run([
                     'ffmpeg', '-i', temp_path,
                     '-vn', '-acodec', 'aac',
-                    '-q:a', '0', output_path, "-y"
+                    '-b:a', '256k', output_path, "-y"
                 ], check=True, startupinfo=startupinfo, creationflags=creation_flags)
             
             # 清理临时文件
@@ -156,6 +157,6 @@ class BilibiliDownloader:
         safe_title = re.sub(r'[\\/:*?"<>|]', '_', title)
         if output_path is None:
             # 使用实例的下载路径
-            output_path = os.path.join(self.download_path, f"{safe_title}.aac")
+            output_path = os.path.join(self.download_path, f"{safe_title}.m4a")
         audio_url = self.get_audio_url(bvid)
         return self.download_audio(audio_url, output_path) 
