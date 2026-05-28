@@ -7,7 +7,7 @@ import queue
 from PyQt6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, 
     QPushButton, QFileDialog, QLabel, QListWidget, QListWidgetItem,
-    QScrollArea, QFrame, QSizePolicy, QStackedLayout, QGridLayout,
+    QScrollArea, QSizePolicy, QStackedLayout, QGridLayout,
     QLineEdit, QMessageBox, QGraphicsDropShadowEffect, QSlider,
     QDialog, QFormLayout, QTextBrowser, QComboBox, QMenu, QInputDialog
 )
@@ -24,7 +24,7 @@ from utils import (
     Config, ASSETS_PATH, CONFIG_PATH,
     PlaylistManager, SpectrumWidget, GradientWidget,
     CircularProgressBar, VolumeSlider, AddMusicDialog,
-    SettingsDialog, CollapsiblePlaylist,
+    SettingsDialog, EqualizerDialog, CollapsiblePlaylist,
     create_icon, format_time, get_icon_path
 )
 
@@ -35,8 +35,7 @@ class PlayerWindow(QMainWindow):
         self.config = Config()
         self.progress_bar = CircularProgressBar()  # 必须在setup_ui之前
         self.setWindowTitle(self.config.WINDOW_TITLE)
-        self.resize(*self.config.WINDOW_SIZE)
-        self.setFixedSize(*self.config.WINDOW_SIZE)
+        self._apply_adaptive_window_size()
         
         # 添加播放模式相关属性
         self.play_modes = ["sequence", "random", "single"]
@@ -77,6 +76,25 @@ class PlayerWindow(QMainWindow):
         # 根据设置恢复播放列表选中项
         self.restore_last_played_track()
 
+    def _apply_adaptive_window_size(self):
+        default_width, default_height = self.config.WINDOW_SIZE
+        screen = QApplication.primaryScreen()
+        if not screen:
+            self.setMinimumSize(720, 480)
+            self.resize(default_width, default_height)
+            return
+
+        available = screen.availableGeometry()
+        max_width = max(1, int(available.width() * 0.9))
+        max_height = max(1, int(available.height() * 0.9))
+        min_width = min(720, max_width)
+        min_height = min(480, max_height)
+        initial_width = min(max(default_width, int(available.width() * 0.55)), max_width)
+        initial_height = min(max(default_height, int(available.height() * 0.65)), max_height)
+
+        self.setMinimumSize(min_width, min_height)
+        self.resize(initial_width, initial_height)
+
     def setup_ui(self):
         # 全局字体美化
         font = QFont("微软雅黑", 11)
@@ -111,13 +129,15 @@ class PlayerWindow(QMainWindow):
         self.playlist.add_to_next_play_requested.connect(self.add_to_next_play)
         # 连接设置按钮信号
         self.playlist.settings_btn.clicked.connect(self.open_settings)
+        # 连接均衡器按钮信号
+        self.playlist.equalizer_btn.clicked.connect(self.open_equalizer)
         # 连接播放列表选择变化信号
         self.playlist.playlist_widget.itemSelectionChanged.connect(self.on_playlist_selection_changed)
         # 连接定位当前歌曲信号
         self.playlist.locate_current_song_requested.connect(self.locate_current_song)
         control_layout.addWidget(self.playlist)
         
-        content_layout.addWidget(control_panel)
+        content_layout.addWidget(control_panel, 1)
         
         # --- 右侧面板 ---
         right_panel = QWidget()
@@ -127,10 +147,12 @@ class PlayerWindow(QMainWindow):
 
         # 创建频谱和按钮的容器 (右侧)
         spectrum_main_container = QWidget()
+        self.spectrum_main_container = spectrum_main_container
         # **关键修复**: 设置一个固定的尺寸来防止频谱图随窗口缩放
         # 这个尺寸应略大于频谱图的直径 (即 (INNER_RADIUS + MAX_AMPLITUDE_RADIUS) * 2)
         # 以提供一些边距
-        spectrum_main_container.setFixedSize(500, 500)
+        spectrum_main_container.setMinimumSize(280, 280)
+        spectrum_main_container.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         
         spectrum_main_layout = QGridLayout(spectrum_main_container)
         spectrum_main_layout.setContentsMargins(0, 0, 0, 0)
@@ -181,8 +203,8 @@ class PlayerWindow(QMainWindow):
         self.update_play_pause_icon()
 
         # **关键修复**: 统一所有按钮的尺寸和样式
-        buttons = [self.play_pause_btn, self.prev_btn, self.next_btn, self.stop_btn, self.play_mode_btn]
-        for btn in buttons:
+        self.control_buttons = [self.play_pause_btn, self.prev_btn, self.next_btn, self.stop_btn, self.play_mode_btn]
+        for btn in self.control_buttons:
             self.set_button_style(btn, size=self.config.CONTROL_BUTTON_SIZE)
             btn.setIconSize(QSize(self.config.CONTROL_BUTTON_ICON_SIZE, self.config.CONTROL_BUTTON_ICON_SIZE))
             btn.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -191,6 +213,7 @@ class PlayerWindow(QMainWindow):
         buttons_overlay = QWidget()
         buttons_overlay.setObjectName("ButtonsOverlay")
         grid_layout = QGridLayout(buttons_overlay)
+        self.buttons_grid_layout = grid_layout
         grid_layout.setSpacing(15) # 设置按钮间的间距
 
         # 第0行: (空白), 播放模式, (空白)
@@ -206,7 +229,7 @@ class PlayerWindow(QMainWindow):
         # 这样它就不会拦截到旁边进度条的点击事件
         spectrum_main_layout.addWidget(buttons_overlay, 0, 0, Qt.AlignmentFlag.AlignCenter)
 
-        right_panel_layout.addWidget(spectrum_main_container)
+        right_panel_layout.addWidget(spectrum_main_container, 1)
 
         # 时间显示标签 - 移到频谱下方
         self.time_label = QLabel("00:00 / 00:00")
@@ -236,7 +259,7 @@ class PlayerWindow(QMainWindow):
         # 仅在容器上安装事件过滤器
         self.volume_container.installEventFilter(self)
         
-        content_layout.addWidget(right_panel)
+        content_layout.addWidget(right_panel, 2)
         
         self.bg_widget.setLayout(content_layout)
 
@@ -253,10 +276,40 @@ class PlayerWindow(QMainWindow):
 
         # 连接进度条跳转信号
         self.progress_bar.seek_requested.connect(self.seek_playback)
+        self._update_responsive_overlay_sizes()
 
     def set_button_style(self, btn, size=40):
         btn.setFixedSize(size, size)
+        self._apply_round_button_style(btn, size)
         # 样式现在完全由QSS文件控制
+
+    def _apply_round_button_style(self, btn, size):
+        radius = max(1, size // 2)
+        btn.setStyleSheet(f"border-radius: {radius}px;")
+
+    def _update_responsive_overlay_sizes(self):
+        if not hasattr(self, 'spectrum_main_container'):
+            return
+
+        base_size = 500
+        available_size = min(self.spectrum_main_container.width(), self.spectrum_main_container.height())
+        if available_size <= 0:
+            return
+
+        scale = max(0.65, min(2.0, available_size / base_size))
+        progress_size = max(150, int(Config.PROGRESS_BAR_RADIUS * 2 * scale))
+        button_size = max(28, int(self.config.CONTROL_BUTTON_SIZE * scale))
+        icon_size = max(20, int(self.config.CONTROL_BUTTON_ICON_SIZE * scale))
+        spacing = max(8, int(15 * scale))
+
+        self.progress_bar.setFixedSize(progress_size, progress_size)
+        for btn in getattr(self, 'control_buttons', []):
+            btn.setFixedSize(button_size, button_size)
+            btn.setIconSize(QSize(icon_size, icon_size))
+            self._apply_round_button_style(btn, button_size)
+
+        if hasattr(self, 'buttons_grid_layout'):
+            self.buttons_grid_layout.setSpacing(spacing)
 
     def update_background(self):
         self.bg_phase = (self.bg_phase + 0.01) % (2 * np.pi)
@@ -276,6 +329,7 @@ class PlayerWindow(QMainWindow):
             self.player.stop()
             self.player = None
         self.player = AudioPlayer(self.current_file)
+        self._apply_volume_for_file(self.current_file)
         self.player.play()
         self.stop_btn.setText("停止")
         self.is_playing = True
@@ -289,9 +343,8 @@ class PlayerWindow(QMainWindow):
         if self.player:
             self.player.stop()
         self.player = AudioPlayer(file_path)
-        # 同步音量到新的播放器实例
-        self.player.set_volume(self.volume_slider.value() / 100.0)
         self.current_file = file_path
+        self._apply_volume_for_file(file_path)
         self.player.play()
         self.is_playing = True
         self.update_play_pause_icon()
@@ -419,6 +472,7 @@ class PlayerWindow(QMainWindow):
         super().resizeEvent(event)
         if hasattr(self, 'bg_widget'):
             self.bg_widget.setGeometry(self.rect())
+        self._update_responsive_overlay_sizes()
 
     def open_add_music_dialog(self):
         """打开添加音乐对话框"""
@@ -550,8 +604,53 @@ class PlayerWindow(QMainWindow):
             self.player.set_volume(value / 100.0)
         # 更新并保存设置（确保设置已初始化）
         if hasattr(self, "settings"):
-            self.settings["volume"] = value
+            if getattr(self, "_applying_remembered_volume", False):
+                return
+
+            default_volume = self._get_default_volume()
+            if self.current_file:
+                track_volumes = self._get_track_volumes()
+                if value == default_volume:
+                    track_volumes.pop(self.current_file, None)
+                else:
+                    track_volumes[self.current_file] = value
+            else:
+                self.settings["volume"] = value
             self.save_settings()
+
+    def _get_default_volume(self):
+        """获取全局默认音量"""
+        volume = self.settings.get("volume", 100)
+        if not isinstance(volume, int):
+            return 100
+        return max(0, min(100, volume))
+
+    def _get_track_volumes(self):
+        """获取单曲音量记忆表"""
+        track_volumes = self.settings.setdefault("track_volumes", {})
+        if not isinstance(track_volumes, dict):
+            track_volumes = {}
+            self.settings["track_volumes"] = track_volumes
+        return track_volumes
+
+    def _get_volume_for_file(self, file_path):
+        """获取指定歌曲应使用的音量"""
+        default_volume = self._get_default_volume()
+        track_volume = self._get_track_volumes().get(file_path, default_volume)
+        if not isinstance(track_volume, int):
+            return default_volume
+        return max(0, min(100, track_volume))
+
+    def _apply_volume_for_file(self, file_path):
+        """将歌曲记忆音量应用到播放器和音量滑块"""
+        volume = self._get_volume_for_file(file_path)
+        self._applying_remembered_volume = True
+        try:
+            self.volume_slider.setValue(volume)
+        finally:
+            self._applying_remembered_volume = False
+        if self.player:
+            self.player.set_volume(volume / 100.0)
 
     def load_settings_data(self):
         """仅加载设置数据，不应用到UI控件"""
@@ -664,6 +763,27 @@ class PlayerWindow(QMainWindow):
                 self.bilibili_downloader.set_download_path(download_path)
                 proxy = self.settings.get("proxy", "")
                 self.bilibili_downloader.set_proxy(proxy)
+    
+    def open_equalizer(self):
+        """打开均衡器对话框"""
+        dialog = EqualizerDialog(self, self.settings.copy())
+        dialog.equalizer_changed.connect(self.on_equalizer_changed)
+        
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            # 更新设置
+            new_settings = dialog.get_settings()
+            self.settings.update(new_settings)
+            self.save_settings()
+    
+    def on_equalizer_changed(self, eq_values):
+        """处理均衡器值变化"""
+        # 这里可以实现音频均衡器的实际处理
+        # 目前只是保存设置，将来可以添加音频处理逻辑
+        print(f"均衡器值更新: {eq_values}")
+        # 如果有音频播放器正在运行，可以在这里应用均衡器效果
+        if hasattr(self, 'player') and self.player:
+            # 将来可以在这里调用音频播放器的均衡器设置方法
+            pass
     
     def locate_current_song(self):
         """定位当前播放的歌曲"""

@@ -7,7 +7,7 @@ from .ui_components import (
     EventLoggingWidget, SpectrumWidget, GradientWidget, 
     CircularProgressBar, VolumeSlider, PlayPauseIcon
 )
-from .dialogs import AddMusicDialog, PlaylistManagerDialog, SettingsDialog
+from .dialogs import AddMusicDialog, PlaylistManagerDialog, SettingsDialog, EqualizerDialog
 from .playlist_widget import CollapsiblePlaylist
 from .helpers import create_icon, format_time, ensure_directory_exists, get_icon_path
 
@@ -16,7 +16,7 @@ __all__ = [
     'PlaylistManager',
     'EventLoggingWidget', 'SpectrumWidget', 'GradientWidget', 
     'CircularProgressBar', 'VolumeSlider', 'PlayPauseIcon',
-    'AddMusicDialog', 'PlaylistManagerDialog', 'SettingsDialog',
+    'AddMusicDialog', 'PlaylistManagerDialog', 'SettingsDialog', 'EqualizerDialog',
     'CollapsiblePlaylist',
     'create_icon', 'format_time', 'ensure_directory_exists', 'get_icon_path'
 ] 

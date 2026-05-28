@@ -50,9 +50,19 @@ class SpectrumWidget(pg.GraphicsLayoutWidget):
         # 尺寸调整时不再需要特殊处理，因为画笔宽度在update_spectrum中设置
         super().resizeEvent(event)
 
+    def _get_scaled_bar_width(self):
+        base_size = 500
+        current_size = min(self.width(), self.height())
+        if current_size <= 0:
+            return self.config.BAR_WIDTH
+
+        scale = max(0.65, min(2.0, current_size / base_size))
+        return max(1.0, self.config.BAR_WIDTH * scale)
+
     def update_spectrum(self, heights, start_time):
         config = self.config
         # heights_clipped = np.clip(heights, 0, config.MAX_DB_VALUE)
+        bar_width = self._get_scaled_bar_width()
         
         radii_outer = (
             config.INNER_RADIUS
@@ -82,9 +92,9 @@ class SpectrumWidget(pg.GraphicsLayoutWidget):
         for i in range(config.NUM_BARS):
             # 获取或创建缓存的画笔
             color_key = (bar_q_colors[i].red(), bar_q_colors[i].green(), 
-                        bar_q_colors[i].blue(), bar_q_colors[i].alpha())
+                        bar_q_colors[i].blue(), bar_q_colors[i].alpha(), round(bar_width, 2))
             if color_key not in self._cached_pens:
-                self._cached_pens[color_key] = pg.mkPen(color=bar_q_colors[i], width=self.config.BAR_WIDTH)
+                self._cached_pens[color_key] = pg.mkPen(color=bar_q_colors[i], width=bar_width)
             
             # 一次性设置所有数据
             x_data = [inner_x[i], outer_x[i]]
@@ -133,8 +143,7 @@ class CircularProgressBar(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.progress = 0
-        self.setMinimumSize(Config.PROGRESS_BAR_RADIUS * 2, Config.PROGRESS_BAR_RADIUS * 2)
-        self.setMaximumSize(Config.PROGRESS_BAR_RADIUS * 2, Config.PROGRESS_BAR_RADIUS * 2)
+        self.setMinimumSize(150, 150)
 
     def sizeHint(self):
         return QSize(Config.PROGRESS_BAR_RADIUS * 2, Config.PROGRESS_BAR_RADIUS * 2)
@@ -174,7 +183,9 @@ class CircularProgressBar(QWidget):
         try:
             painter.setRenderHint(QPainter.RenderHint.Antialiasing)
 
-            pen_width = Config.PROGRESS_BAR_WIDTH
+            base_size = Config.PROGRESS_BAR_RADIUS * 2
+            scale = min(self.width(), self.height()) / base_size if base_size else 1
+            pen_width = max(4, int(Config.PROGRESS_BAR_WIDTH * scale))
             
             # 关键修复：
             # 创建一个安全边距，防止因画笔宽度和圆角端点导致的边缘裁剪问题。

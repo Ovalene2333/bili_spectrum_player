@@ -31,7 +31,7 @@ QWidget {
 }
 
 #DownloadButton, #SelectFileButton, #DeleteButton, #PerformanceModeButton, 
-#AddMusicButton, #LocateButton, #SettingsButton, #NewPlaylistButton, #ManagePlaylistButton {
+#AddMusicButton, #LocateButton, #EqualizerButton, #SettingsButton, #NewPlaylistButton, #ManagePlaylistButton {
     background: rgba(255,255,255,0.15);
     border: 1px solid rgba(255,255,255,0.3);
     border-radius: 12px;
@@ -41,7 +41,7 @@ QWidget {
 }
 
 #DownloadButton:hover, #SelectFileButton:hover, #DeleteButton:hover, #PerformanceModeButton:hover,
-#AddMusicButton:hover, #LocateButton:hover, #SettingsButton:hover, #NewPlaylistButton:hover, #ManagePlaylistButton:hover {
+#AddMusicButton:hover, #LocateButton:hover, #EqualizerButton:hover, #SettingsButton:hover, #NewPlaylistButton:hover, #ManagePlaylistButton:hover {
     background: rgba(255,255,255,0.2);
 }
 
@@ -378,4 +378,165 @@ QMenu#ContextMenu::item {
 
 QMenu#ContextMenu::item:selected {
     background-color: rgba(33, 150, 243, 0.3);
+}
+
+/* EqualizerDialog Styles */
+QDialog#EqualizerDialog {
+    background-color: #f0f0f0;
+}
+
+QDialog#EqualizerDialog QGroupBox {
+    font-weight: bold;
+    font-size: 13px;
+    color: #333;
+    border: 2px solid #ccc;
+    border-radius: 8px;
+    margin-top: 1ex;
+    padding-top: 10px;
+}
+
+QDialog#EqualizerDialog QGroupBox::title {
+    subcontrol-origin: margin;
+    left: 10px;
+    padding: 0 8px 0 8px;
+    color: #2196F3;
+    background-color: #f0f0f0;
+}
+
+QDialog#EqualizerDialog QLabel {
+    color: #222;
+    font-size: 11px;
+    font-weight: bold;
+    background-color: transparent;
+}
+
+QDialog#EqualizerDialog QComboBox {
+    background-color: white;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    padding: 6px 12px;
+    color: #333;
+    font-size: 12px;
+    min-width: 120px;
+}
+
+QDialog#EqualizerDialog QComboBox:hover {
+    border: 1px solid #2196F3;
+}
+
+QDialog#EqualizerDialog QComboBox::drop-down {
+    subcontrol-origin: padding;
+    subcontrol-position: top right;
+    width: 20px;
+    border-left: 1px solid #ccc;
+    border-top-right-radius: 4px;
+    border-bottom-right-radius: 4px;
+    background: #f8f8f8;
+}
+
+QDialog#EqualizerDialog QComboBox::down-arrow {
+    image: none;
+    border-left: 4px solid transparent;
+    border-right: 4px solid transparent;
+    border-top: 6px solid #666;
+    width: 0;
+    height: 0;
+}
+
+QDialog#EqualizerDialog QComboBox QAbstractItemView {
+    background-color: white;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    selection-background-color: #e3f2fd;
+    outline: none;
+    color: #000;
+}
+
+QDialog#EqualizerDialog QComboBox QAbstractItemView::item {
+    padding: 8px 12px;
+    color: #000;
+    background-color: white;
+}
+
+QDialog#EqualizerDialog QComboBox QAbstractItemView::item:selected {
+    background-color: #e3f2fd;
+    color: #000;
+}
+
+QDialog#EqualizerDialog QSlider::groove:vertical {
+    background: #e0e0e0;
+    width: 8px;
+    border-radius: 4px;
+}
+
+QDialog#EqualizerDialog QSlider::handle:vertical {
+    background: #2196F3;
+    border: 2px solid #1976D2;
+    width: 16px;
+    height: 16px;
+    margin: 0 -4px;
+    border-radius: 8px;
+}
+
+QDialog#EqualizerDialog QSlider::handle:vertical:hover {
+    background: #1976D2;
+    border: 2px solid #1565C0;
+}
+
+QDialog#EqualizerDialog QSlider::sub-page:vertical {
+    background: #2196F3;
+    border-radius: 4px;
+}
+
+QDialog#EqualizerDialog QSlider::add-page:vertical {
+    background: #e0e0e0;
+    border-radius: 4px;
+}
+
+/* 特殊样式：频率标签和数值标签 */
+QDialog#EqualizerDialog QLabel[objectName^="ValueLabel_"] {
+    color: #000;
+    font-size: 10px;
+    font-weight: bold;
+    background-color: rgba(255, 255, 255, 0.8);
+    border-radius: 3px;
+    padding: 2px 4px;
+}
+
+QDialog#EqualizerDialog QSlider {
+    background: transparent;
+}
+
+/* 确保滑块刻度标记可见 */
+QDialog#EqualizerDialog QSlider::tick-mark {
+    background: #666;
+    width: 2px;
+    height: 2px;
+}
+
+QDialog#EqualizerDialog QPushButton {
+    background-color: #2196F3;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 4px;
+    font-weight: bold;
+    font-size: 12px;
+    min-width: 80px;
+}
+
+QDialog#EqualizerDialog QPushButton:hover {
+    background-color: #1976D2;
+}
+
+QDialog#EqualizerDialog QPushButton:pressed {
+    background-color: #1565C0;
+}
+
+QDialog#EqualizerDialog QPushButton:checked {
+    background-color: #4CAF50;
+}
+
+QDialog#EqualizerDialog QPushButton:checked:hover {
+    background-color: #45a049;
 }

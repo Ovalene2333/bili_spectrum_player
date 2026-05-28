@@ -68,6 +68,14 @@ class CollapsiblePlaylist(QWidget):
         self.performance_mode_btn.toggled.connect(self.performance_mode_toggled.emit)
         top_row_layout.addWidget(self.performance_mode_btn)
         
+        # 均衡器按钮
+        self.equalizer_btn = QPushButton()
+        self.equalizer_btn.setText("EQ")
+        self.equalizer_btn.setObjectName("EqualizerButton")
+        self.equalizer_btn.setToolTip("均衡器")
+        self.equalizer_btn.setFixedSize(32, 32)
+        top_row_layout.addWidget(self.equalizer_btn)
+        
         # 设置按钮
         self.settings_btn = QPushButton()
         self.settings_btn.setIcon(create_icon(get_icon_path("settings.svg")))
@@ -114,9 +122,13 @@ class CollapsiblePlaylist(QWidget):
                 border-bottom: 1px solid rgba(255,255,255,0.1);
             }
             QListWidget::item:selected {
-                background: rgba(33,150,243,0.25);
+                background: rgba(33,150,243,0.45);
                 border-radius: 8px;
-                color: #BBBBBB; /* 将选中项文字颜色改为灰色 */
+                color: #FFFFFF;
+            }
+            QListWidget::item:selected:!active {
+                background: rgba(33,150,243,0.38);
+                color: #FFFFFF;
             }
 
             /* --- 滚动条美化 --- */
